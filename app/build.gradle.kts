@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
 //    id ("org.jetbrains.kotlin.android") version "2.0.0" apply false
+    id("kotlin-kapt")
+    id("com.google.dagger.hilt.android")
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
@@ -60,7 +62,6 @@ dependencies {
     implementation(libs.ui.graphics)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.foundation)
-    implementation(project(":OpenCV"))
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.core.ktx)
@@ -72,6 +73,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    implementation(libs.androidx.navigation.compose)
+
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-android-compiler:2.51.1")
 
 // CameraX core library using the camera2 implementation
     val camerax_version = "1.5.0-alpha04"
@@ -88,4 +94,8 @@ dependencies {
     implementation("androidx.camera:camera-mlkit-vision:${camerax_version}")
     // If you want to additionally use the CameraX Extensions library
     implementation("androidx.camera:camera-extensions:${camerax_version}")
+}
+
+kapt {
+    correctErrorTypes = true
 }

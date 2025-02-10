@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "SmartHome"
 include(":app")
-include(":OpenCV")
