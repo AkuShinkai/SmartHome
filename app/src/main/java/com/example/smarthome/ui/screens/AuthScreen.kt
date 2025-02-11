@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -83,7 +82,7 @@ fun AuthScreen(navController: NavController?) {
                     colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
                     modifier = Modifier
                         .weight(1f)
-                        .height(50.dp)
+                        .height(60.dp)
                 ) {
                     Text(text = "Login", color = Color.Black, fontSize = 20.sp)
                 }
@@ -93,12 +92,12 @@ fun AuthScreen(navController: NavController?) {
                 IconButton(
                     onClick = { navController?.navigate(Screen.FaceLogin.route) },
                     modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(10.dp)) // Mengubah dari CircleShape ke RoundedCornerShape
                         .background(Color.LightGray)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        painter = painterResource(id = R.drawable.familiar_face_and_zone_48px),
                         contentDescription = "Face Recognition",
                         tint = Color.DarkGray
                     )

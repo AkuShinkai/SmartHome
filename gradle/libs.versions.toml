@@ -1,6 +1,9 @@
 [versions]
 agp = "8.7.2"
 cameraCamera2 = "1.5.1"
+cameraExtensions = "1.5.0-alpha04"
+cameraMlkitVision = "1.5.0-alpha04"
+cameraVideo = "1.5.0-alpha04"
 faceDetection = "17.1.0)"
 faceDetectionVersion = "16.1.7"
 kotlin = "2.0.0"
@@ -14,6 +17,7 @@ composeBom = "2024.04.01"
 googleGmsGoogleServices = "4.4.2"
 firebaseDatabase = "21.0.0"
 material = "1.5.4"
+materialIconsExtendedVersion = "1.5.0"
 navigationCompose = "2.7.6"
 opencvAndroid = "4.5.3)"
 orgEclipsePahoClientMqttv3 = "1.2.5"
@@ -23,16 +27,23 @@ runtime = "1.5.4"
 ui = "1.5.4"
 coreKtxVersion = "1.15.0"
 constraintlayout = "2.2.0"
+firebaseAuth = "23.2.0"
+litert = "1.1.0"
+firebaseFirestore = "25.1.2"
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCamera2" }
+androidx-camera-extensions = { module = "androidx.camera:camera-extensions", version.ref = "cameraExtensions" }
+androidx-camera-video = { module = "androidx.camera:camera-video", version.ref = "cameraVideo" }
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCamera2" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-material = { module = "androidx.compose.material:material", version.ref = "material" }
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtendedVersion" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "runtime" }
 androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
+camera-mlkit-vision = { module = "androidx.camera:camera-mlkit-vision", version.ref = "cameraMlkitVision" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 face-detection-v1617 = { module = "com.google.mlkit:face-detection", version.ref = "faceDetectionVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -57,6 +68,9 @@ androidx-camera-core = { group = "androidx.camera", name = "camera-core", versio
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtxVersion" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

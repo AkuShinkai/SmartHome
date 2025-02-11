@@ -41,6 +41,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    aaptOptions{
+        noCompress ("tflite")
+    }
 }
 
 dependencies {
@@ -66,6 +70,9 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.core.ktx)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.firebase.auth)
+    implementation(libs.litert)
+    implementation(libs.firebase.firestore)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -75,6 +82,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation(libs.androidx.navigation.compose)
+    implementation (libs.androidx.material.icons.extended)
+
 
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")
@@ -94,6 +103,8 @@ dependencies {
     implementation("androidx.camera:camera-mlkit-vision:${camerax_version}")
     // If you want to additionally use the CameraX Extensions library
     implementation("androidx.camera:camera-extensions:${camerax_version}")
+
+    implementation ("com.google.guava:guava:32.1.2-android")
 }
 
 kapt {
