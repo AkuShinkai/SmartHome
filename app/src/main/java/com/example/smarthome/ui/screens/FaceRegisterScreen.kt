@@ -49,9 +49,16 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
 
     val onFacesDetected: (List<Face>) -> Unit = { faces ->
         if (faces.isNotEmpty()) {
-            faceDetected = true
-            latestFaceBitmap = FloatArray(160 * 160 * 3) { 0.5f } // Dummy data (harus diganti dengan hasil preprocess)
-            Log.d("FaceRecognition", "Wajah terdeteksi: ${faces.size} wajah ditemukan")
+            // Pilih wajah terbesar berdasarkan luas bounding box
+            val largestFace = faces.maxByOrNull { face ->
+                face.boundingBox.width() * face.boundingBox.height()
+            }
+
+            if (largestFace != null) {
+                faceDetected = true
+                latestFaceBitmap = FloatArray(160 * 160 * 3) { 0.5f } // Dummy data (harus diganti dengan hasil preprocess)
+                Log.d("FaceRecognition", "Wajah terbesar dipilih: ${largestFace.boundingBox}")
+            }
         } else {
             faceDetected = false
             latestFaceBitmap = null

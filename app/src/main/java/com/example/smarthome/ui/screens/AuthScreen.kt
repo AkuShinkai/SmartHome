@@ -1,5 +1,8 @@
 package com.example.smarthome.ui.screens
 
+import android.content.Context
+import android.util.Patterns
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,27 +17,41 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.smarthome.R
+import com.example.smarthome.ui.component.LoginBottomSheet
 import com.example.smarthome.ui.navigation.Screen
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun AuthScreen(navController: NavController?) {
+    var showLoginSheet by remember { mutableStateOf(false) }
+    var loginError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier.fillMaxSize()
             .background(Color.Transparent)
@@ -70,14 +87,14 @@ fun AuthScreen(navController: NavController?) {
                 .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(100.dp)) // Tombol agak turun
+            Spacer(modifier = Modifier.height(100.dp))
 
-            // **Tombol Login & Face Recognition (Sejajar Horizontal)**
+            // **Tombol Login & Face Recognition**
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { navController?.navigate(Screen.Login.route) },
+                    onClick = { showLoginSheet = true },
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
                     modifier = Modifier
@@ -93,7 +110,7 @@ fun AuthScreen(navController: NavController?) {
                     onClick = { navController?.navigate(Screen.FaceLogin.route) },
                     modifier = Modifier
                         .size(60.dp)
-                        .clip(RoundedCornerShape(10.dp)) // Mengubah dari CircleShape ke RoundedCornerShape
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color.LightGray)
                 ) {
                     Icon(
@@ -104,7 +121,7 @@ fun AuthScreen(navController: NavController?) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(25.dp)) // Jarak ke teks lebih besar
+            Spacer(modifier = Modifier.height(25.dp))
 
             // **Navigasi ke Halaman Registrasi**
             Row {
@@ -119,6 +136,77 @@ fun AuthScreen(navController: NavController?) {
             }
         }
     }
+
+    // **Login Bottom Sheet**
+    if (showLoginSheet) {
+        LoginBottomSheet(
+            onDismiss = { showLoginSheet = false },
+            onLogin = { email, password ->
+                val validationError = validateLogin(email, password)
+                if (validationError != null) {
+                    loginError = validationError
+                    return@LoginBottomSheet
+                }
+
+                FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
+                        showNotification(context, "Smart Home", "Selamat datang di aplikasi!")
+
+                        navController?.navigate(Screen.Home.route)
+                        showLoginSheet = false
+                    }
+                    .addOnFailureListener {
+                        loginError = it.localizedMessage
+//                        Toast.makeText(context, "Login Gagal", Toast.LENGTH_SHORT).show()
+                    }
+            }
+        )
+    }
+
+    // **Menampilkan error jika login gagal**
+    loginError?.let {
+        AlertDialog(
+            onDismissRequest = { loginError = null },
+            title = { Text("Login Gagal") },
+            text = { Text(it) },
+            confirmButton = {
+                TextButton(onClick = { loginError = null }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+}
+
+// **Validasi Login**
+fun validateLogin(email: String, password: String): String? {
+    if (email.isEmpty() || password.isEmpty()) {
+        return "Email dan Password tidak boleh kosong."
+    }
+    if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        return "Format email tidak valid."
+    }
+    if (password.length < 6) {
+        return "Password minimal 6 karakter."
+    }
+    return null
+}
+
+// **Fungsi untuk Menampilkan Notifikasi**
+fun showNotification(context: Context, title: String, message: String) {
+    val notificationId = 1
+    val channelId = "smarthome_notifications"
+
+    val notification = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setContentTitle(title)
+        .setContentText(message)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setAutoCancel(true)
+        .build()
+//
+//    NotificationManagerCompat.from(context).notify(notificationId, notification)
 }
 
 // **Preview Jetpack Compose**

@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.smarthome.ui.screens.AuthScreen
 import com.example.smarthome.ui.screens.FaceRegisterScreen
+import com.example.smarthome.ui.screens.HomeScreen
 //import com.example.smarthome.ui.screens.HomeScreen
 import com.example.smarthome.ui.screens.RegisterScreen
 
@@ -26,9 +27,9 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Auth.route) {
             AuthScreen(navController)
         }
-//        composable(Screen.Home.route) {
-//            HomeScreen(navController)
-//        }
+        composable(Screen.Home.route) {
+            HomeScreen(navController)
+        }
         composable(Screen.Register.route) {
             RegisterScreen(navController)
         }
