@@ -105,6 +105,10 @@ dependencies {
     implementation("androidx.camera:camera-extensions:${camerax_version}")
 
     implementation ("com.google.guava:guava:32.1.2-android")
+
+    implementation (libs.jbcrypt)
+
+    implementation(libs.androidx.security.crypto)
 }
 
 kapt {

@@ -1,5 +1,6 @@
 package com.example.smarthome
 
+import android.graphics.Bitmap
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -14,7 +15,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.face.Face
 
 @Composable
-fun CameraPreview(modifier: Modifier = Modifier, onFacesDetected: (List<Face>) -> Unit) {
+fun CameraPreview(modifier: Modifier = Modifier, onFacesDetected: (List<Face>, Bitmap) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 

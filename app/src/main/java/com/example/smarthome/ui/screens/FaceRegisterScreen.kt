@@ -1,5 +1,7 @@
 package com.example.smarthome.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.Rect
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.smarthome.CameraPreview
 import com.example.smarthome.model.FaceNetModel
+import com.example.smarthome.security.AESUtil
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.face.Face
@@ -43,25 +46,28 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
     val faceNetModel = remember { FaceNetModel(context) }
 
     var faceDetected by remember { mutableStateOf(false) }
-    var latestFaceBitmap by remember { mutableStateOf<FloatArray?>(null) }
+    var latestFaceBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var latestBoundingBox by remember { mutableStateOf<Rect?>(null) }
     var faceEmbedding by remember { mutableStateOf<FloatArray?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
 
-    val onFacesDetected: (List<Face>) -> Unit = { faces ->
+    val onFacesDetected: (List<Face>, Bitmap) -> Unit = { faces, bitmap ->
         if (faces.isNotEmpty()) {
-            // Pilih wajah terbesar berdasarkan luas bounding box
             val largestFace = faces.maxByOrNull { face ->
                 face.boundingBox.width() * face.boundingBox.height()
             }
 
             if (largestFace != null) {
                 faceDetected = true
-                latestFaceBitmap = FloatArray(160 * 160 * 3) { 0.5f } // Dummy data (harus diganti dengan hasil preprocess)
+                latestFaceBitmap = bitmap
+                latestBoundingBox = largestFace.boundingBox
                 Log.d("FaceRecognition", "Wajah terbesar dipilih: ${largestFace.boundingBox}")
             }
         } else {
             faceDetected = false
             latestFaceBitmap = null
+            latestBoundingBox = null
+            faceEmbedding = null
             Log.d("FaceRecognition", "Tidak ada wajah terdeteksi")
         }
     }
@@ -75,7 +81,7 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
         verticalArrangement = Arrangement.Center
     ) {
         Text("Register", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 22.sp)
-        Text("Scan wajah anda untuk akses login Mudah", fontSize = 14.sp, color = Color.Gray)
+        Text("Scan wajah anda untuk akses login mudah", fontSize = 14.sp, color = Color.Gray)
 
         Spacer(modifier = Modifier.height(30.dp))
 
@@ -97,12 +103,14 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
 
         Button(
             onClick = {
-                if (faceDetected && latestFaceBitmap != null) {
+                if (faceDetected && latestFaceBitmap != null && latestBoundingBox != null) {
                     isProcessing = true
-                    faceEmbedding = faceNetModel.getFaceEmbedding(latestFaceBitmap!!)
+                    faceEmbedding = faceNetModel.getFaceEmbedding(latestFaceBitmap!!, latestBoundingBox!!)
 
-                    // Mendaftarkan akun ke Firebase Authentication
-                    registerUser(email, password, name, faceEmbedding!!, context, navController) {
+                    // Enkripsi password sebelum menyimpannya ke Firestore
+                    val encryptedPassword = AESUtil.encrypt(password)
+
+                    registerUser(email, encryptedPassword, password, name, faceEmbedding!!, context, navController) {
                         isProcessing = false
                     }
                 } else {
@@ -124,6 +132,7 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
 // Fungsi untuk mendaftarkan user ke Firebase Authentication dan menyimpan embedding wajah
 fun registerUser(
     email: String,
+    encryptedPassword: String,
     password: String,
     name: String,
     faceEmbedding: FloatArray,
@@ -142,7 +151,8 @@ fun registerUser(
                 val userMap = hashMapOf(
                     "name" to name,
                     "email" to email,
-                    "faceEmbedding" to faceEmbedding.toList() // Simpan embedding sebagai list
+                    "encryptedPassword" to encryptedPassword, // Simpan password terenkripsi
+                    "faceEmbedding" to faceEmbedding.toList()
                 )
 
                 db.collection("users").document(userId)
@@ -164,4 +174,3 @@ fun registerUser(
             }
         }
 }
-

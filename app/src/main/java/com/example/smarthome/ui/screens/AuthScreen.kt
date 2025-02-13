@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.smarthome.R
+import com.example.smarthome.ui.component.FaceLoginBottomSheet
 import com.example.smarthome.ui.component.LoginBottomSheet
 import com.example.smarthome.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
@@ -50,6 +51,7 @@ import com.google.firebase.auth.FirebaseAuth
 fun AuthScreen(navController: NavController?) {
     var showLoginSheet by remember { mutableStateOf(false) }
     var loginError by remember { mutableStateOf<String?>(null) }
+    var showFaceLoginSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Column(
@@ -107,7 +109,7 @@ fun AuthScreen(navController: NavController?) {
                 Spacer(modifier = Modifier.width(15.dp))
 
                 IconButton(
-                    onClick = { navController?.navigate(Screen.FaceLogin.route) },
+                    onClick = { showFaceLoginSheet = true },
                     modifier = Modifier
                         .size(60.dp)
                         .clip(RoundedCornerShape(10.dp))
@@ -163,6 +165,14 @@ fun AuthScreen(navController: NavController?) {
             }
         )
     }
+
+    if (showFaceLoginSheet) {
+        FaceLoginBottomSheet(
+            onDismiss = { showFaceLoginSheet = false },
+            navController = navController ?: return
+        )
+    }
+
 
     // **Menampilkan error jika login gagal**
     loginError?.let {
