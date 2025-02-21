@@ -80,6 +80,8 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation (libs.androidx.material)
+
 
     implementation(libs.androidx.navigation.compose)
     implementation (libs.androidx.material.icons.extended)
@@ -109,6 +111,8 @@ dependencies {
     implementation (libs.jbcrypt)
 
     implementation(libs.androidx.security.crypto)
+
+    implementation ("io.github.ehsannarmani:compose-charts:0.1.2")
 }
 
 kapt {

@@ -4,6 +4,7 @@ cameraCamera2 = "1.5.1"
 cameraExtensions = "1.5.0-alpha04"
 cameraMlkitVision = "1.5.0-alpha04"
 cameraVideo = "1.5.0-alpha04"
+charts = "0.2.4"
 faceDetection = "17.1.0)"
 faceDetectionVersion = "16.1.7"
 jbcrypt = "0.4"
@@ -47,6 +48,7 @@ androidx-runtime = { module = "androidx.compose.runtime:runtime", version.ref = 
 androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 camera-mlkit-vision = { module = "androidx.camera:camera-mlkit-vision", version.ref = "cameraMlkitVision" }
+charts = { module = "com.github.tehras:charts", version.ref = "charts" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 face-detection-v1617 = { module = "com.google.mlkit:face-detection", version.ref = "faceDetectionVersion" }
 jbcrypt = { module = "de.svenkubiak:jBCrypt", version.ref = "jbcrypt" }

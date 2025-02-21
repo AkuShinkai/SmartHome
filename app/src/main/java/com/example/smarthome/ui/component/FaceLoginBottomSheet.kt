@@ -38,8 +38,8 @@ import com.example.smarthome.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.face.Face
+import kotlinx.coroutines.launch
 import kotlin.math.sqrt
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,22 +56,47 @@ fun FaceLoginBottomSheet(
     var isProcessing by remember { mutableStateOf(false) }
     var latestBoundingBox by remember { mutableStateOf<android.graphics.Rect?>(null) }
 
+    var buttonText by remember { mutableStateOf("Login dengan Wajah") }
+    var isButtonEnabled by remember { mutableStateOf(true) } // Untuk delay button
+
+    val minFaceSize = 250 * 250  // 30 cm (wajah lebih kecil)
+    val maxFaceSize = 400 * 400  // 20 cm (wajah lebih besar)
 
     val onFacesDetected: (List<Face>, Bitmap) -> Unit = { faces, bitmap ->
         if (faces.isNotEmpty()) {
             val largestFace = faces.maxByOrNull { face ->
                 face.boundingBox.width() * face.boundingBox.height()
             }
+
             if (largestFace != null) {
-                Log.d("FaceLogin", "Wajah terdeteksi dengan bounding box: ${largestFace.boundingBox}")
-                faceDetected = true
-                latestFaceBitmap = bitmap
-                latestBoundingBox = largestFace.boundingBox // Simpan bounding box terbaru
+                val faceArea = largestFace.boundingBox.width() * largestFace.boundingBox.height()
+
+                if (faceArea in minFaceSize..maxFaceSize) {
+                    faceDetected = true
+                    latestFaceBitmap = bitmap
+                    latestBoundingBox = largestFace.boundingBox
+                    buttonText = "Login dengan Wajah"
+                    Log.d("FaceRecognition", "Wajah valid dengan bounding box: ${largestFace.boundingBox}")
+                } else {
+                    faceDetected = false
+                    latestFaceBitmap = null
+                    latestBoundingBox = null
+
+                    buttonText = when {
+                        faceArea < minFaceSize -> "Jarak terlalu jauh"
+                        faceArea > maxFaceSize -> "Jarak terlalu dekat"
+                        else -> "Jarak wajah tidak sesuai"
+                    }
+
+                    Log.w("FaceRecognition", buttonText)
+                }
             }
         } else {
-            Log.d("FaceLogin", "Tidak ada wajah terdeteksi.")
             faceDetected = false
             latestFaceBitmap = null
+            latestBoundingBox = null
+            buttonText = "Tidak ada wajah terdeteksi"
+            Log.d("FaceRecognition", "Tidak ada wajah terdeteksi")
         }
     }
 
@@ -102,7 +127,7 @@ fun FaceLoginBottomSheet(
             ) {
                 CameraPreview(
                     modifier = Modifier.matchParentSize(),
-                    onFacesDetected = onFacesDetected // Sesuai dengan parameter baru
+                    onFacesDetected = onFacesDetected
                 )
             }
 
@@ -110,35 +135,40 @@ fun FaceLoginBottomSheet(
 
             Button(
                 onClick = {
-                    if (faceDetected && latestFaceBitmap != null) {
+                    if (faceDetected && latestFaceBitmap != null && isButtonEnabled) {
                         isProcessing = true
-                        Log.d("FaceLogin", "Memulai ekstraksi embedding wajah.")
+                        isButtonEnabled = false // Matikan button sementara
+                        buttonText = "Memproses..."
+
                         try {
                             faceEmbedding = faceNetModel.getFaceEmbedding(latestFaceBitmap!!, latestBoundingBox!!)
-                            Log.d("FaceLogin", "Embedding wajah berhasil didapatkan.")
-
-                            // Mengirim embedding ke fungsi login
                             authenticateWithFace(faceEmbedding!!, context, navController) {
                                 isProcessing = false
+                                buttonText = "Login dengan Wajah"
+
+                                // Delay sebelum button bisa ditekan lagi
+                                kotlinx.coroutines.GlobalScope.launch {
+                                    kotlinx.coroutines.delay(1000) // 2 detik
+                                    isButtonEnabled = true // Aktifkan button kembali
+                                }
                             }
                         } catch (e: Exception) {
                             Log.e("FaceLogin", "Gagal mendapatkan embedding wajah: ${e.message}", e)
-                            Toast.makeText(context, "Terjadi kesalahan saat memproses wajah!", Toast.LENGTH_SHORT).show()
+                            buttonText = "Terjadi kesalahan"
                             isProcessing = false
+                            isButtonEnabled = true // Pastikan button bisa ditekan kembali
                         }
-                    } else {
-                        Log.w("FaceLogin", "Tidak ada wajah terdeteksi saat tombol ditekan.")
-                        Toast.makeText(context, "Tidak ada wajah terdeteksi!", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(0.8f),
-                enabled = faceDetected && !isProcessing
+                enabled = isButtonEnabled && buttonText == "Login dengan Wajah" && !isProcessing
             ) {
-                Text(if (isProcessing) "Memproses..." else "Login dengan Wajah")
+                Text(buttonText)
             }
         }
     }
 }
+
 
 fun authenticateWithFace(
     faceEmbedding: FloatArray,
@@ -150,6 +180,9 @@ fun authenticateWithFace(
     val db = FirebaseFirestore.getInstance()
 
     Log.d("FaceAuth", "Memulai autentikasi wajah...")
+
+    // Log embedding hasil scan
+    Log.d("FaceAuth", "Embedding wajah hasil scan: ${faceEmbedding.joinToString()}")
 
     db.collection("users").get()
         .addOnSuccessListener { documents ->
@@ -165,6 +198,9 @@ fun authenticateWithFace(
                 val encryptedPassword = document.getString("encryptedPassword")
 
                 if (storedEmbedding != null && email != null && encryptedPassword != null) {
+                    // Log embedding dari Firestore
+                    Log.d("FaceAuth", "Embedding wajah dari Firestore untuk $email: ${storedEmbedding.joinToString()}")
+
                     val distance = calculateEuclideanDistance(faceEmbedding, storedEmbedding.toFloatArray())
 
                     Log.d("FaceAuth", "Comparing face with user $email, distance: $distance")
@@ -178,7 +214,7 @@ fun authenticateWithFace(
                 }
             }
 
-            if (bestMatchEmail != null && minDistance < 0.85) {
+            if (bestMatchEmail != null && minDistance < 0.60) {
                 Log.d("FaceAuth", "Wajah cocok dengan pengguna $bestMatchEmail, distance: $minDistance")
 
                 try {
@@ -212,7 +248,11 @@ fun authenticateWithFace(
 }
 
 fun calculateEuclideanDistance(embedding1: FloatArray, embedding2: FloatArray): Float {
-    val distance = sqrt(embedding1.zip(embedding2) { a, b -> (a - b) * (a - b) }.sum())
-    Log.d("FaceAuth", "Euclidean Distance: $distance")
-    return distance
+    var sum = 0.0
+    for (i in embedding1.indices) {
+        val diff = embedding1[i] - embedding2[i]
+        sum += diff * diff
+    }
+    return sqrt(sum.toFloat()) // Sama seperti np.linalg.norm() di Python
 }
+

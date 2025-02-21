@@ -50,6 +50,10 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
     var latestBoundingBox by remember { mutableStateOf<Rect?>(null) }
     var faceEmbedding by remember { mutableStateOf<FloatArray?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
+    var buttonText by remember { mutableStateOf("Scan Wajah") } // Ubah teks tombol
+
+    val minFaceSize = 250 * 250  // 30 cm (wajah lebih kecil)
+    val maxFaceSize = 400 * 400  // 20 cm (wajah lebih besar)
 
     val onFacesDetected: (List<Face>, Bitmap) -> Unit = { faces, bitmap ->
         if (faces.isNotEmpty()) {
@@ -58,17 +62,34 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
             }
 
             if (largestFace != null) {
-                faceDetected = true
-                latestFaceBitmap = bitmap
-                latestBoundingBox = largestFace.boundingBox
-                Log.d("FaceRecognition", "Wajah terbesar dipilih: ${largestFace.boundingBox}")
+                val faceArea = largestFace.boundingBox.width() * largestFace.boundingBox.height()
+
+                when {
+                    faceArea < minFaceSize -> {
+                        faceDetected = false
+                        latestFaceBitmap = null
+                        latestBoundingBox = null
+                        buttonText = "Wajah terlalu jauh"
+                    }
+                    faceArea > maxFaceSize -> {
+                        faceDetected = false
+                        latestFaceBitmap = null
+                        latestBoundingBox = null
+                        buttonText = "Wajah terlalu dekat"
+                    }
+                    else -> {
+                        faceDetected = true
+                        latestFaceBitmap = bitmap
+                        latestBoundingBox = largestFace.boundingBox
+                        buttonText = "Scan Wajah"
+                    }
+                }
             }
         } else {
             faceDetected = false
             latestFaceBitmap = null
             latestBoundingBox = null
-            faceEmbedding = null
-            Log.d("FaceRecognition", "Tidak ada wajah terdeteksi")
+            buttonText = "Tidak ada wajah terdeteksi"
         }
     }
 
@@ -107,24 +128,21 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
                     isProcessing = true
                     faceEmbedding = faceNetModel.getFaceEmbedding(latestFaceBitmap!!, latestBoundingBox!!)
 
-                    // Enkripsi password sebelum menyimpannya ke Firestore
                     val encryptedPassword = AESUtil.encrypt(password)
 
                     registerUser(email, encryptedPassword, password, name, faceEmbedding!!, context, navController) {
                         isProcessing = false
                     }
-                } else {
-                    Toast.makeText(context, "Tidak ada wajah terdeteksi!", Toast.LENGTH_SHORT).show()
                 }
             },
             modifier = Modifier
                 .fillMaxWidth(0.8f)
                 .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = if (faceDetected) Color.Blue else Color.Gray),
+            colors = ButtonDefaults.buttonColors(containerColor = if (buttonText == "Scan Wajah") Color.Blue else Color.Gray),
             shape = RoundedCornerShape(10.dp),
-            enabled = faceDetected && !isProcessing
+            enabled = buttonText == "Scan Wajah" && !isProcessing
         ) {
-            Text(if (isProcessing) "Menyimpan..." else "Scan Wajah", color = Color.White)
+            Text(if (isProcessing) "Menyimpan..." else buttonText, color = Color.White)
         }
     }
 }

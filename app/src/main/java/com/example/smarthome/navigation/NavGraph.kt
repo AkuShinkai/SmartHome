@@ -1,13 +1,13 @@
 package com.example.smarthome.navigation
 
+//import com.example.smarthome.ui.screens.HomeScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.smarthome.ui.screens.AuthScreen
 import com.example.smarthome.ui.screens.FaceRegisterScreen
-import com.example.smarthome.ui.screens.HomeScreen
-//import com.example.smarthome.ui.screens.HomeScreen
+import com.example.smarthome.ui.screens.MainScreen
 import com.example.smarthome.ui.screens.RegisterScreen
 
 // Definisi route untuk setiap screen
@@ -28,7 +28,7 @@ fun NavGraph(navController: NavHostController) {
             AuthScreen(navController)
         }
         composable(Screen.Home.route) {
-            HomeScreen(navController)
+            MainScreen(navController)
         }
         composable(Screen.Register.route) {
             RegisterScreen(navController)

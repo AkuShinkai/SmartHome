@@ -42,8 +42,11 @@ class FaceNetModel(context: Context) {
 
         val croppedFace = Bitmap.createBitmap(bitmap, x, y, width, height)
 
+        // Pastikan bitmap dalam format RGB
+        val rgbFace = croppedFace.copy(Bitmap.Config.ARGB_8888, true)
+
         // Resize gambar ke 160x160 sebelum dikirim ke model
-        val resizedFace = Bitmap.createScaledBitmap(croppedFace, 160, 160, true)
+        val resizedFace = Bitmap.createScaledBitmap(rgbFace, 160, 160, true)
 
         val inputBuffer = ByteBuffer.allocateDirect(160 * 160 * 3 * 4) // 160x160x3 (RGB) * 4 bytes per float
         inputBuffer.order(ByteOrder.nativeOrder())
@@ -51,9 +54,12 @@ class FaceNetModel(context: Context) {
         for (y in 0 until 160) {
             for (x in 0 until 160) {
                 val pixel = resizedFace.getPixel(x, y)
-                val r = (pixel shr 16 and 0xFF) / 255.0f
-                val g = (pixel shr 8 and 0xFF) / 255.0f
-                val b = (pixel and 0xFF) / 255.0f
+
+                // Jika model Python pakai normalisasi [-1,1], ubah ke:
+                val r = ((pixel shr 16 and 0xFF) - 127.5f) / 127.5f
+                val g = ((pixel shr 8 and 0xFF) - 127.5f) / 127.5f
+                val b = ((pixel and 0xFF) - 127.5f) / 127.5f
+
                 inputBuffer.putFloat(r)
                 inputBuffer.putFloat(g)
                 inputBuffer.putFloat(b)
