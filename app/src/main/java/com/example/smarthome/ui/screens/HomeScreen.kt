@@ -50,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -447,6 +448,8 @@ fun WeatherInfoItem(label: String, value: String) {
 @Composable
 fun DeviceUsageChart(navController: NavController?) {
     var selectedPieIndex by remember { mutableStateOf<Int?>(null) }
+    var showTooltip by remember { mutableStateOf(false) }
+    var tooltipText by remember { mutableStateOf("") }
     var data by remember {
         mutableStateOf(
             listOf(
@@ -470,18 +473,39 @@ fun DeviceUsageChart(navController: NavController?) {
                 data = data,
                 onPieClick = { clickedPie ->
                     val pieIndex = data.indexOf(clickedPie)
+                    if (selectedPieIndex == pieIndex) {
+                        showTooltip = false
+                        selectedPieIndex = null
+                    } else {
+                        selectedPieIndex = pieIndex
+                        tooltipText = "${clickedPie.label}: ${clickedPie.data}%"
+                        showTooltip = true
+                    }
 
-                    // Jika sudah dipilih, batalkan pemilihan
-                    selectedPieIndex = if (selectedPieIndex == pieIndex) null else pieIndex
-
-                    // Update data dengan status baru
                     data = data.mapIndexed { index, pie -> pie.copy(selected = selectedPieIndex == index) }
                 },
                 selectedScale = 1.2f,
-//                spaceDegree = 7f,
                 selectedPaddingDegree = 4f,
                 style = Pie.Style.Stroke()
             )
+
+            // Tooltip muncul di atas pie chart
+            if (showTooltip) {
+                Popup(alignment = Alignment.TopCenter) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color.Black, shape = RoundedCornerShape(8.dp))
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = tooltipText,
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

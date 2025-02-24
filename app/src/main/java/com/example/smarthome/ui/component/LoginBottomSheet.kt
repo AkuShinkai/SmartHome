@@ -96,11 +96,11 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
             ) {
-                Text("Login")
+                Text("Login", fontSize = 16.sp)
             }
 
             TextButton(onClick = onDismiss) {
-                Text("Batal", color = Color.Red)
+                Text("Batal", color = Color.Red, fontSize = 16.sp)
             }
         }
     }

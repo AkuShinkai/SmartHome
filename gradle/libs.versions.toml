@@ -5,6 +5,7 @@ cameraExtensions = "1.5.0-alpha04"
 cameraMlkitVision = "1.5.0-alpha04"
 cameraVideo = "1.5.0-alpha04"
 charts = "0.2.4"
+composeCharts = "0.1.2"
 faceDetection = "17.1.0)"
 faceDetectionVersion = "16.1.7"
 jbcrypt = "0.4"
@@ -33,12 +34,15 @@ constraintlayout = "2.2.0"
 firebaseAuth = "23.2.0"
 litert = "1.1.0"
 firebaseFirestore = "25.1.2"
+uiVersion = "1.7.8"
+uiGraphics = "1.6.0"
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCamera2" }
 androidx-camera-extensions = { module = "androidx.camera:camera-extensions", version.ref = "cameraExtensions" }
 androidx-camera-video = { module = "androidx.camera:camera-video", version.ref = "cameraVideo" }
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCamera2" }
+androidx-compose-ui-ui-graphics = { module = "androidx.compose.ui:ui-graphics", version.ref = "uiGraphics" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-material = { module = "androidx.compose.material:material", version.ref = "material" }
@@ -47,8 +51,10 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 androidx-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "runtime" }
 androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+androidx-ui-v178 = { module = "androidx.compose.ui:ui", version.ref = "uiVersion" }
 camera-mlkit-vision = { module = "androidx.camera:camera-mlkit-vision", version.ref = "cameraMlkitVision" }
 charts = { module = "com.github.tehras:charts", version.ref = "charts" }
+compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 face-detection-v1617 = { module = "com.google.mlkit:face-detection", version.ref = "faceDetectionVersion" }
 jbcrypt = { module = "de.svenkubiak:jBCrypt", version.ref = "jbcrypt" }

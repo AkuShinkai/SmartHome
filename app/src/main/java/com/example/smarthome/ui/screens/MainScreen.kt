@@ -37,8 +37,8 @@ fun MainScreen(navController: NavController) {
         ) {
             when (selectedScreen) {
                 "Home" -> HomeScreen(navController)
-//                "Usage" -> UsageScreen(navController)
-//                "Me" -> MeScreen(navController)
+                "Usage" -> UsageScreen(navController)
+                "Me" -> MeScreen(navController)
             }
         }
     }

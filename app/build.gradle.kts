@@ -81,6 +81,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation (libs.androidx.material)
+    implementation(libs.androidx.ui.v178) // Pastikan versi terbaru
+    implementation(libs.androidx.compose.ui.ui.graphics) // Untuk Brush dan warna
 
 
     implementation(libs.androidx.navigation.compose)
