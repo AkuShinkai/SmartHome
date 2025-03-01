@@ -20,6 +20,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "OPENWEATHER_API_KEY", "\"${project.findProperty("OPENWEATHER_API_KEY")}\"")
     }
 
     buildTypes {
@@ -40,6 +41,7 @@ android {
 //    }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     aaptOptions{
@@ -73,6 +75,8 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.litert)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
+    implementation(libs.androidx.lifecycle.process)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -84,10 +88,17 @@ dependencies {
     implementation(libs.androidx.ui.v178) // Pastikan versi terbaru
     implementation(libs.androidx.compose.ui.ui.graphics) // Untuk Brush dan warna
 
+    implementation (libs.retrofit)
+    implementation (libs.converter.gson)
+
+    implementation(libs.coil.compose)
 
     implementation(libs.androidx.navigation.compose)
     implementation (libs.androidx.material.icons.extended)
 
+    implementation (libs.androidx.datastore.preferences)
+
+    implementation(libs.coil)
 
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")

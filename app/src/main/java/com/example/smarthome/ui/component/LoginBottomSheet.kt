@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -27,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -51,7 +54,11 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = { newText ->
+                    if (!newText.contains("\n")) { // Mencegah input Enter
+                        email = newText
+                    }
+                },
                 label = { Text("Email") },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Email Icon") },
                 modifier = Modifier.fillMaxWidth(),
@@ -63,6 +70,9 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     unfocusedTextColor = Color.Gray,
                     focusedTextColor = Color.Black,
                     focusedLabelColor = Color.White
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Done
                 )
             )
 
@@ -70,11 +80,16 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = { newText ->
+                    if (!newText.contains("\n")) { // Mencegah input Enter
+                        password = newText
+                    }
+                },
                 label = { Text("Password") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth(),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     containerColor = Color.White,
                     focusedBorderColor = Color.Blue,
@@ -83,6 +98,10 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     unfocusedTextColor = Color.Gray,
                     focusedTextColor = Color.Black,
                     focusedLabelColor = Color.White
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
                 )
             )
 

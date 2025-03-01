@@ -15,14 +15,13 @@ sealed class Screen(val route: String) {
     object Auth : Screen("auth_screen")
     object Home : Screen("home_screen")
     object Register : Screen("register_screen")
-    object FaceRegister : Screen("face_register_screen")
 }
 
 @Composable
-fun NavGraph(navController: NavHostController) {
+fun NavGraph(navController: NavHostController, startDestination: String) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Auth.route // Halaman pertama saat aplikasi dijalankan
+        startDestination = startDestination
     ) {
         composable(Screen.Auth.route) {
             AuthScreen(navController)

@@ -1,5 +1,6 @@
 package com.example.smarthome.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +21,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bed
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Power
-import androidx.compose.material.icons.filled.Task
 import androidx.compose.material.icons.filled.Weekend
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Grain
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.WbCloudy
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,6 +59,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.navigation.NavController
+import com.example.smarthome.R
+import com.example.smarthome.api.WeatherRepository
+import com.example.smarthome.data.WeatherResponse
+import com.example.smarthome.security.ApiKey
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import ir.ehsannarmani.compose_charts.PieChart
@@ -64,6 +75,9 @@ fun HomeScreen(navController: NavController?) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid
     var userName by remember { mutableStateOf<String?>(null) }
 
+    var weather by remember { mutableStateOf<WeatherResponse?>(null) }
+    val repository = WeatherRepository()
+
     // 🔹 Data Perangkat & Ruangan
     var devices by remember {
         mutableStateOf(
@@ -72,6 +86,10 @@ fun HomeScreen(navController: NavController?) {
                 Device("Smart Socket", Icons.Default.Power, "Ruang Tamu")
             )
         )
+    }
+
+    LaunchedEffect(Unit) {
+        weather = repository.getWeather("Madiun", ApiKey.WEATHER_API_KEY)
     }
 
     LaunchedEffect(userId) {
@@ -100,7 +118,7 @@ fun HomeScreen(navController: NavController?) {
         Text(text = "Home", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         if (userName == null) {
-            CircularProgressIndicator() // Menampilkan loading jika nama masih diambil dari Firestore
+            CircularProgressIndicator()
         } else {
             Text(
                 text = "Hello, $userName! 👋",
@@ -113,9 +131,13 @@ fun HomeScreen(navController: NavController?) {
 
         // 🔹 WeatherCard
         WeatherCard(
-            temperature = 27, condition = "Partly Cloudy",
-            location = "Jakarta, Indonesia", feelsLike = 30,
-            precipitation = 10, humidity = 75, windSpeed = 12
+            temperature = weather?.main?.temp?.toInt() ?: 0,
+            condition = weather?.weather?.firstOrNull()?.main ?: "Unknown",
+            location = weather?.name ?: "Unknown",
+            feelsLike = weather?.main?.feels_like?.toInt() ?: 0,
+            humidity = weather?.main?.humidity ?: 0,
+            windSpeed = weather?.wind?.speed?.toInt() ?: 0,
+            airQualityIndex = getAirQualityIndex(weather)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -177,7 +199,9 @@ fun HomeScreen(navController: NavController?) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            DeviceUsageChart(navController)
+            DeviceUsageChart(navController) { route ->
+                navController?.navigate(route)
+            }
         }
 
         // 🔹 Dialog Edit Ruangan
@@ -365,16 +389,22 @@ fun DeviceCard(
     }
 }
 
+fun getAirQualityIndex(weather: WeatherResponse?): Int {
+    return weather?.main?.humidity?.div(10) ?: 50 // Contoh perhitungan sederhana atau default AQI
+}
+
+
 @Composable
 fun WeatherCard(
     temperature: Int,
     condition: String,
     location: String,
     feelsLike: Int,
-    precipitation: Int,
     humidity: Int,
-    windSpeed: Int
+    windSpeed: Int,
+    airQualityIndex: Int // Tambahkan indeks kualitas udara
 ) {
+    val (isVector, icon) = getWeatherIcon(condition)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -385,19 +415,26 @@ fun WeatherCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 🔹 Baris Atas: Ikon dan Kondisi Cuaca
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Cloud, // Ganti dengan ikon cuaca yang sesuai
-                        contentDescription = "Weather Icon",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    if (isVector) {
+                        Icon(
+                            imageVector = icon as ImageVector,
+                            contentDescription = "Weather Icon",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = icon as Int),
+                            contentDescription = "Weather Icon",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = condition,
@@ -414,7 +451,6 @@ fun WeatherCard(
                 )
             }
 
-            // 🔹 Lokasi
             Text(
                 text = location,
                 color = Color.Gray,
@@ -423,17 +459,30 @@ fun WeatherCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 🔹 Informasi Tambahan: Feels Like, Humidity, Wind, Precipitation
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 WeatherInfoItem(label = "Feels Like", value = "$feelsLike°C")
-                WeatherInfoItem(label = "Precipitation", value = "$precipitation%")
                 WeatherInfoItem(label = "Humidity", value = "$humidity%")
                 WeatherInfoItem(label = "Wind", value = "$windSpeed km/h")
+                WeatherInfoItem(label = "AQI", value = airQualityIndex.toString()) // Tambahkan AQI
             }
         }
+    }
+}
+
+@Composable
+fun getWeatherIcon(condition: String): Pair<Boolean, Any> {
+    return when (condition.lowercase()) {
+        "clear", "sunny" -> Pair(true, Icons.Outlined.WbSunny)
+        "clouds", "partly cloudy" -> Pair(true, Icons.Outlined.WbCloudy)
+        "rain", "light rain", "moderate rain", "heavy rain" -> Pair(false, R.drawable.rainy_24px)
+        "thunderstorm" -> Pair(true, Icons.Outlined.Bolt)
+        "drizzle" -> Pair(true, Icons.Outlined.Grain)
+        "snow" -> Pair(true, Icons.Outlined.AcUnit)
+        "mist", "fog", "haze" -> Pair(true, Icons.Outlined.VisibilityOff)
+        else -> Pair(true, Icons.Outlined.HelpOutline)
     }
 }
 
@@ -446,7 +495,7 @@ fun WeatherInfoItem(label: String, value: String) {
 }
 
 @Composable
-fun DeviceUsageChart(navController: NavController?) {
+fun DeviceUsageChart(navController: NavController? ,onNavigate: (String) -> Unit) {
     var selectedPieIndex by remember { mutableStateOf<Int?>(null) }
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipText by remember { mutableStateOf("") }
@@ -506,18 +555,6 @@ fun DeviceUsageChart(navController: NavController?) {
                     }
                 }
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Tombol Energy Usage
-        Button(
-            onClick = { navController?.navigate("Usage") },
-            colors = ButtonDefaults.buttonColors(Color(0xFFD6D6D6))
-        ) {
-            Icon(Icons.Default.Task, contentDescription = "Usage", tint = Color.Black)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Energy Usage", color = Color.Black, fontWeight = FontWeight.Bold)
         }
     }
 }

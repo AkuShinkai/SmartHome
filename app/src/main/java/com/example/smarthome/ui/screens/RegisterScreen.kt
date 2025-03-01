@@ -152,7 +152,7 @@ fun RegisterScreen(navController: NavController) {
             }
 
             Text(
-                text = "Sudah Memiliki Akun?",
+                text = "Sudah Memiliki Akun",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Blue,

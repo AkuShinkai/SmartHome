@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,16 +37,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import com.example.smarthome.R
+import com.example.smarthome.session.SessionManager
 import com.example.smarthome.ui.component.FaceLoginBottomSheet
 import com.example.smarthome.ui.component.LoginBottomSheet
 import com.example.smarthome.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @Composable
 fun AuthScreen(navController: NavController?) {
@@ -53,12 +55,13 @@ fun AuthScreen(navController: NavController?) {
     var loginError by remember { mutableStateOf<String?>(null) }
     var showFaceLoginSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxSize()
             .background(Color.Transparent)
     ) {
-        // **Bagian Atas (Background & Icon)**
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -80,7 +83,6 @@ fun AuthScreen(navController: NavController?) {
             }
         }
 
-        // **Bagian Bawah (Form & Tombol)**
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,7 +93,6 @@ fun AuthScreen(navController: NavController?) {
         ) {
             Spacer(modifier = Modifier.height(100.dp))
 
-            // **Tombol Login & Face Recognition**
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -125,7 +126,6 @@ fun AuthScreen(navController: NavController?) {
 
             Spacer(modifier = Modifier.height(25.dp))
 
-            // **Navigasi ke Halaman Registrasi**
             Row {
                 Text(text = "Belum Mempunyai Akun?", fontSize = 18.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.width(5.dp))
@@ -139,7 +139,6 @@ fun AuthScreen(navController: NavController?) {
         }
     }
 
-    // **Login Bottom Sheet**
     if (showLoginSheet) {
         LoginBottomSheet(
             onDismiss = { showLoginSheet = false },
@@ -152,15 +151,16 @@ fun AuthScreen(navController: NavController?) {
 
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                     .addOnSuccessListener {
+                        scope.launch {
+                            sessionManager.saveSession(true, email)
+                        }
                         Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
                         showNotification(context, "Smart Home", "Selamat datang di aplikasi!")
-
                         navController?.navigate(Screen.Home.route)
                         showLoginSheet = false
                     }
                     .addOnFailureListener {
                         loginError = it.localizedMessage
-//                        Toast.makeText(context, "Login Gagal", Toast.LENGTH_SHORT).show()
                     }
             }
         )
@@ -173,8 +173,6 @@ fun AuthScreen(navController: NavController?) {
         )
     }
 
-
-    // **Menampilkan error jika login gagal**
     loginError?.let {
         AlertDialog(
             onDismissRequest = { loginError = null },
@@ -189,7 +187,6 @@ fun AuthScreen(navController: NavController?) {
     }
 }
 
-// **Validasi Login**
 fun validateLogin(email: String, password: String): String? {
     if (email.isEmpty() || password.isEmpty()) {
         return "Email dan Password tidak boleh kosong."
@@ -203,7 +200,6 @@ fun validateLogin(email: String, password: String): String? {
     return null
 }
 
-// **Fungsi untuk Menampilkan Notifikasi**
 fun showNotification(context: Context, title: String, message: String) {
     val notificationId = 1
     val channelId = "smarthome_notifications"
@@ -215,13 +211,4 @@ fun showNotification(context: Context, title: String, message: String) {
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setAutoCancel(true)
         .build()
-//
-//    NotificationManagerCompat.from(context).notify(notificationId, notification)
-}
-
-// **Preview Jetpack Compose**
-@Preview(showBackground = true)
-@Composable
-fun PreviewAuthScreen() {
-    AuthScreen(navController = null)
 }

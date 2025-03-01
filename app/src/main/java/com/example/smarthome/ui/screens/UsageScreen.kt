@@ -1,32 +1,39 @@
 package com.example.smarthome.ui.screens
 
 import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import ir.ehsannarmani.compose_charts.ColumnChart
 import ir.ehsannarmani.compose_charts.LineChart
@@ -42,171 +49,156 @@ fun UsageScreen(navController: NavController?) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        LineUsageChart()
-        Spacer(modifier = Modifier.height(16.dp))
-        BarUsageChart()
-    }
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Column {
+                UsageInfoSection()
+            }
+        }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Grafik Penggunaan Listrik
+        UsageCard(title = "Penggunaan Listrik") {
+            LineUsageChart()
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Grafik Penggunaan Perangkat
+        UsageCard(title = "Penggunaan Perangkat") {
+            BarUsageChart()
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
 }
 
 @Composable
-fun LineUsageChart(){
+fun UsageInfoSection() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp) // Tinggi header tetap
+            .background(Color(0xFFBDBDBD))
+            .padding(horizontal = 20.dp, vertical = 16.dp) // Padding lebih besar
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Top // Menjadikan konten mulai dari atas
+        ) {
+            Text(
+                text = "Usage",
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp, // Ukuran teks tetap besar
+                color = Color.Black,
+                modifier = Modifier
+                    .align(Alignment.Start) // Geser ke kiri
+                    .padding(top = 8.dp) // Tambahkan padding agar lebih ke atas
+            )
+
+            Spacer(modifier = Modifier.height(8.dp)) // Jarak lebih kecil agar tidak turun jauh
+
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(top = 30.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly, // Elemen lebih seimbang
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                UsageInfoItem(icon = Icons.Default.Bolt, value = "170 KwH", label = "Listrik")
+                UsageInfoItem(icon = Icons.Default.Thermostat, value = "40°C", label = "Suhu")
+                UsageInfoItem(icon = Icons.Default.WaterDrop, value = "60%", label = "Kelembapan")
+            }
+        }
+    }
+}
+
+
+@Composable
+fun UsageInfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, label: String) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth()
-                .height(300.dp),
-            contentAlignment = Alignment.Center
-        ){
-            LineChart(
-                modifier = Modifier.padding(horizontal = 22.dp),
-                data = remember {
-                    listOf(
-                        Line(
-                            label = "Windows",
-                            values = listOf(28.0, 41.0, 5.0, 10.0, 35.0),
-                            color = SolidColor(Color(0xFF23af92)),
-                            firstGradientFillColor = Color(0xFF2BC0A1).copy(alpha = .5f),
-                            secondGradientFillColor = Color.Transparent,
-                            strokeAnimationSpec = tween(2000, easing = EaseInOutCubic),
-                            gradientAnimationDelay = 1000,
-                            drawStyle = DrawStyle.Stroke(width = 2.dp),
-                        )
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = Color.Black,
+            modifier = Modifier.size(28.dp) // Perbesar ikon
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = value, fontWeight = FontWeight.Bold, fontSize = 16.sp) // Ukuran teks lebih besar
+        Text(text = label, fontSize = 14.sp, color = Color.Gray) // Ukuran label diperbesar
+    }
+}
+
+@Composable
+fun UsageCard(title: String, content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFD0D0D0))
+            .padding(16.dp)
+    ) {
+        Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        content()
+    }
+}
+
+
+@Composable
+fun LineUsageChart() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        LineChart(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            data = remember {
+                listOf(
+                    Line(
+                        label = "Listrik",
+                        values = listOf(170.0, 160.0, 155.0, 165.0, 180.0),
+                        color = SolidColor(Color(0xFF3F51B5)), // Biru lebih soft
+                        firstGradientFillColor = Color(0xFF3F51B5).copy(alpha = .3f),
+                        secondGradientFillColor = Color.Transparent,
+                        strokeAnimationSpec = tween(2000, easing = EaseInOutCubic),
+                        gradientAnimationDelay = 1000,
+                        drawStyle = DrawStyle.Stroke(width = 2.dp),
                     )
-                },
-                animationMode = AnimationMode.Together(delayBuilder = {
-                    it * 500L
-                }),
-            )
-        }
+                )
+            },
+            animationMode = AnimationMode.Together(delayBuilder = { it * 500L }),
+            maxValue = 200.0,
+        )
     }
 }
 
 @Composable
 fun BarUsageChart() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .horizontalScroll(rememberScrollState()) // Scroll ke samping
-            ) {
-                ColumnChart(
-                    modifier = Modifier
-                        .width(600.dp) // Lebar minimal agar bisa di-scroll
-                        .padding(horizontal = 22.dp),
-                    data = remember {
-                        listOf(
-                            Bars(
-                                label = "Jan",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 70.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Feb",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Mar",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 70.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Apr",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "May",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Jun",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Jul",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Aug",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Sep",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Oct",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Nov",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                            Bars(
-                                label = "Dec",
-                                values = listOf(
-                                    Bars.Data(label = "Linux", value = 50.0, color = SolidColor(Color.Blue)),
-                                    Bars.Data(label = "Windows", value = 60.0, color = SolidColor(Color.Red))
-                                ),
-                            ),
-                        )
-                    },
-                    barProperties = BarProperties(
-                        spacing = 3.dp
-                    ),
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
-                )
-            }
-        }
-    }
+    ColumnChart(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp)
+            .padding(horizontal = 16.dp),
+        data = remember {
+            listOf(
+                Bars(label = "Jan", values = listOf(Bars.Data(label = "Perangkat", value = 70.0, color = SolidColor(Color(0xFFE53935))))),
+                Bars(label = "Feb", values = listOf(Bars.Data(label = "Perangkat", value = 50.0, color = SolidColor(Color(0xFFE53935))))),
+                Bars(label = "Mar", values = listOf(Bars.Data(label = "Perangkat", value = 60.0, color = SolidColor(Color(0xFFE53935))))),
+            )
+        },
+        barProperties = BarProperties(spacing = 5.dp),
+        maxValue = 100.0
+    )
 }
 
 @Preview(showBackground = true)

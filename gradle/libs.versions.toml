@@ -5,7 +5,11 @@ cameraExtensions = "1.5.0-alpha04"
 cameraMlkitVision = "1.5.0-alpha04"
 cameraVideo = "1.5.0-alpha04"
 charts = "0.2.4"
+coil = "2.5.0"
+coilCompose = "2.5.0"
 composeCharts = "0.1.2"
+converterGson = "2.9.0"
+datastorePreferences = "1.0.0"
 faceDetection = "17.1.0)"
 faceDetectionVersion = "16.1.7"
 jbcrypt = "0.4"
@@ -26,6 +30,7 @@ opencvAndroid = "4.5.3)"
 orgEclipsePahoClientMqttv3 = "1.2.5"
 cameraCore = "1.4.1"
 cameraLifecycle = "1.4.1"
+retrofit = "2.9.0"
 runtime = "1.5.4"
 securityCrypto = "1.1.0-alpha06"
 ui = "1.5.4"
@@ -36,6 +41,8 @@ litert = "1.1.0"
 firebaseFirestore = "25.1.2"
 uiVersion = "1.7.8"
 uiGraphics = "1.6.0"
+firebaseStorage = "21.0.1"
+lifecycleProcess = "2.8.7"
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCamera2" }
@@ -44,6 +51,7 @@ androidx-camera-video = { module = "androidx.camera:camera-video", version.ref =
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCamera2" }
 androidx-compose-ui-ui-graphics = { module = "androidx.compose.ui:ui-graphics", version.ref = "uiGraphics" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-material = { module = "androidx.compose.material:material", version.ref = "material" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtendedVersion" }
@@ -54,7 +62,10 @@ androidx-security-crypto = { module = "androidx.security:security-crypto", versi
 androidx-ui-v178 = { module = "androidx.compose.ui:ui", version.ref = "uiVersion" }
 camera-mlkit-vision = { module = "androidx.camera:camera-mlkit-vision", version.ref = "cameraMlkitVision" }
 charts = { module = "com.github.tehras:charts", version.ref = "charts" }
+coil = { module = "io.coil-kt:coil", version.ref = "coil" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }
+converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 face-detection-v1617 = { module = "com.google.mlkit:face-detection", version.ref = "faceDetectionVersion" }
 jbcrypt = { module = "de.svenkubiak:jBCrypt", version.ref = "jbcrypt" }
@@ -74,6 +85,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 opencv-android = { module = "org.opencv:opencv-android", version.ref = "opencvAndroid" }
 org-eclipse-paho-client-mqttv3 = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "orgEclipsePahoClientMqttv3" }
+retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
 ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
@@ -83,6 +95,8 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
