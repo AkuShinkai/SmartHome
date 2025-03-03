@@ -101,6 +101,7 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
     val coroutineScope = rememberCoroutineScope()
 
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showConfirmDeleteDialog by remember { mutableStateOf(false) }
     var newImageUri by remember { mutableStateOf<Uri?>(null) }
     val profileImage by meViewModel.profileImage.collectAsState()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -233,7 +234,7 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                                     .background(Color.White)
                                     .border(1.dp, Color.Gray, CircleShape)
                                     .clickable {
-                                        deleteProfileImage(meViewModel)
+                                        showConfirmDeleteDialog = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -242,6 +243,26 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                                     contentDescription = "Delete Profile Picture",
                                     tint = Color.Red,
                                     modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            if (showConfirmDeleteDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showConfirmDeleteDialog = false },
+                                    title = { Text("Confirm Deletion") },
+                                    text = { Text("Are you sure you want to delete your profile picture?") },
+                                    confirmButton = {
+                                        Button(onClick = {
+                                            deleteProfileImage(meViewModel)
+                                            showConfirmDeleteDialog = false
+                                        }) {
+                                            Text("Yes, Delete")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        OutlinedButton(onClick = { showConfirmDeleteDialog = false }) {
+                                            Text("Cancel")
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -256,7 +277,7 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 ProfileTextField("First Name", editedName, isEditing) { editedName = it }
-                ProfileTextField("Email", auth.currentUser?.email ?: "johndoe@gmail.com", false) {}
+                ProfileTextField("Email", auth.currentUser?.email ?: "user@gmail.com", false) {}
 
                 ProfileDatePicker("Birth", editedBirthDate, isEditing) { editedBirthDate = it }
                 ProfileDropdownField("Gender", editedGender, isEditing) { editedGender = it }
@@ -359,6 +380,8 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Logout", color = Color.Red)
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -414,7 +437,7 @@ fun ProfileDropdownField(label: String, selectedValue: String, isEditing: Boolea
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = label, fontSize = 12.sp, color = Color.Gray)
+            Text(text = label, fontSize = 15.sp, color = Color.Gray)
 
             Box(
                 modifier = Modifier
@@ -509,7 +532,7 @@ fun ProfileTextField(label: String, text: String, isEditing: Boolean, onValueCha
     val backgroundColor = if (isEditing) Color.White else Color(0xFFD3D3D3) // Abu-abu jika tidak sedang edit
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(text = label, fontSize = 12.sp, color = Color.Gray)
+        Text(text = label, fontSize = 15.sp, color = Color.Gray)
         TextField(
             value = text,
             onValueChange = { newText ->
@@ -540,7 +563,7 @@ fun ProfileSelectableField(label: String, text: String, isEditing: Boolean, onVa
     val backgroundColor = if (isEditing) Color.White else Color(0xFFD3D3D3)
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(text = label, fontSize = 12.sp, color = Color.Gray)
+        Text(text = label, fontSize = 15.sp, color = Color.Gray)
         Row(
             modifier = Modifier
                 .fillMaxWidth()

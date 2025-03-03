@@ -1,15 +1,15 @@
 package com.example.smarthome
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
@@ -23,14 +23,14 @@ import kotlinx.coroutines.launch
 
 @ExperimentalMaterial3Api
 @AndroidEntryPoint
-class MainActivity : ComponentActivity(), LifecycleObserver {
+class MainActivity : ComponentActivity(), DefaultLifecycleObserver {
     private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super<ComponentActivity>.onCreate(savedInstanceState)
         sessionManager = SessionManager(applicationContext)
 
-        // Mendaftarkan observer lifecycle untuk mendeteksi background/foreground
+        // Mendaftarkan observer lifecycle
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
 
         lifecycleScope.launch {
@@ -53,20 +53,21 @@ class MainActivity : ComponentActivity(), LifecycleObserver {
         }
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-    fun onAppBackgrounded() {
+    override fun onStop(owner: LifecycleOwner) {
+        super<DefaultLifecycleObserver>.onStop(owner)
         // Simpan waktu terakhir aplikasi digunakan
         lifecycleScope.launch {
             sessionManager.updateLastActiveTime()
         }
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    fun onAppForegrounded() {
+    override fun onStart(owner: LifecycleOwner) {
+        super<DefaultLifecycleObserver>.onStart(owner)
         lifecycleScope.launch {
             val isLoggedIn = sessionManager.isLoggedIn.first()
             if (!isLoggedIn) {
                 runOnUiThread {
+                    Toast.makeText(applicationContext, "Session habis!", Toast.LENGTH_LONG).show()
                     setContent {
                         val navController = rememberNavController()
                         NavGraph(navController = navController, startDestination = Screen.Login.route)

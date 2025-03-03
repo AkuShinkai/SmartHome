@@ -2,7 +2,13 @@ package com.example.smarthome
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.ImageFormat
+import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.YuvImage
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
@@ -26,49 +32,83 @@ class FaceAnalyzer(
 
     @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
-            val image = InputImage.fromMediaImage(mediaImage, rotationDegrees)
+        try {
+            val mediaImage = imageProxy.image
+            if (mediaImage != null) {
+                val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+                val image = InputImage.fromMediaImage(mediaImage, rotationDegrees)
 
-            // Konversi ImageProxy menjadi Bitmap
-            val bitmap = imageProxy.toBitmap()
+                // Konversi ImageProxy ke Bitmap (Optimized)
+                val bitmap = imageProxy.toBitmapOptimized()?.toGrayscale()
 
-            detector.process(image)
-                .addOnSuccessListener { faces ->
-                    onFacesDetected(faces, bitmap) // Kirim daftar wajah dan bitmap hasil konversi
-                }
-                .addOnFailureListener { e ->
-                    Log.e("FaceAnalyzer", "Gagal mendeteksi wajah: ${e.message}")
-                }
-                .addOnCompleteListener {
+                if (bitmap == null) {
                     imageProxy.close()
+                    return
                 }
+
+                detector.process(image)
+                    .addOnSuccessListener { faces ->
+                        onFacesDetected(faces, bitmap)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("FaceAnalyzer", "Gagal mendeteksi wajah: ${e.message}")
+                    }
+                    .addOnCompleteListener {
+                        imageProxy.close() // Pastikan selalu ditutup
+                    }
+            } else {
+                imageProxy.close()
+            }
+        } catch (e: Exception) {
+            Log.e("FaceAnalyzer", "Error dalam analyze: ${e.message}")
+            imageProxy.close()
         }
     }
 
-    // Fungsi untuk mengonversi ImageProxy menjadi Bitmap
-    private fun ImageProxy.toBitmap(): Bitmap {
-        val yBuffer = planes[0].buffer // Luminance
-        val uBuffer = planes[1].buffer // Chrominance U
-        val vBuffer = planes[2].buffer // Chrominance V
+    // 🔹 Fungsi untuk mengonversi ImageProxy ke Bitmap dengan Optimasi
+    private fun ImageProxy.toBitmapOptimized(): Bitmap? {
+        try {
+            val yBuffer = planes[0].buffer
+            val uBuffer = planes[1].buffer
+            val vBuffer = planes[2].buffer
 
-        val ySize = yBuffer.remaining()
-        val uSize = uBuffer.remaining()
-        val vSize = vBuffer.remaining()
+            val ySize = yBuffer.remaining()
+            val uSize = uBuffer.remaining()
+            val vSize = vBuffer.remaining()
 
-        val nv21 = ByteArray(ySize + uSize + vSize)
+            val nv21 = ByteArray(ySize + uSize + vSize)
+            yBuffer.get(nv21, 0, ySize)
+            vBuffer.get(nv21, ySize, vSize)
+            uBuffer.get(nv21, ySize + vSize, uSize)
 
-        // Copy the Y, U, and V buffers into NV21 array
-        yBuffer.get(nv21, 0, ySize)
-        vBuffer.get(nv21, ySize, vSize)
-        uBuffer.get(nv21, ySize + vSize, uSize)
+            val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+            val out = ByteArrayOutputStream()
 
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-        val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, out)
-        val imageBytes = out.toByteArray()
+            // Kurangi kualitas ke 75% untuk menghemat memori
+            yuvImage.compressToJpeg(Rect(0, 0, width, height), 75, out)
 
-        return android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            val imageBytes = out.toByteArray()
+
+            // Gunakan inSampleSize untuk mengurangi ukuran bitmap (agar lebih ringan)
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = 2  // Kurangi ukuran gambar (1/4 dari ukuran asli)
+            }
+
+            return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
+        } catch (e: Exception) {
+            Log.e("FaceAnalyzer", "Gagal mengubah ImageProxy ke Bitmap: ${e.message}")
+            return null
+        }
+    }
+
+    // 🔹 Fungsi untuk mengubah Bitmap menjadi Grayscale TANPA membuat salinan besar
+    private fun Bitmap.toGrayscale(): Bitmap {
+        return copy(Bitmap.Config.ARGB_8888, true).apply {
+            val canvas = Canvas(this)
+            val paint = Paint()
+            val colorMatrix = ColorMatrix().apply { setSaturation(0f) }
+            paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+            canvas.drawBitmap(this, 0f, 0f, paint)
+        }
     }
 }

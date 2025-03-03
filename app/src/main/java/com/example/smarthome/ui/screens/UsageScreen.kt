@@ -24,7 +24,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.smarthome.data.UsageData
+import com.example.smarthome.data.fetchUsageData
 import ir.ehsannarmani.compose_charts.ColumnChart
 import ir.ehsannarmani.compose_charts.LineChart
 import ir.ehsannarmani.compose_charts.models.AnimationMode
@@ -42,9 +49,21 @@ import ir.ehsannarmani.compose_charts.models.BarProperties
 import ir.ehsannarmani.compose_charts.models.Bars
 import ir.ehsannarmani.compose_charts.models.DrawStyle
 import ir.ehsannarmani.compose_charts.models.Line
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun UsageScreen(navController: NavController?) {
+    val scope = rememberCoroutineScope()
+    var usageData by remember { mutableStateOf<List<UsageData>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Ambil data saat pertama kali komponen dimuat
+    LaunchedEffect(Unit) {
+        usageData = fetchUsageData("switch_1") // Ganti dengan switch yang tersedia di Firestore
+        isLoading = false
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -62,19 +81,31 @@ fun UsageScreen(navController: NavController?) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Grafik Penggunaan Listrik
-        UsageCard(title = "Penggunaan Listrik") {
-            LineUsageChart()
+        if (isLoading) {
+            Text(
+                text = "Memuat data...",
+                modifier = Modifier.padding(16.dp),
+                fontSize = 16.sp
+            )
+        } else if (usageData.isEmpty()) {
+            Text(
+                text = "Tidak ada data untuk ditampilkan",
+                modifier = Modifier.padding(16.dp),
+                fontSize = 16.sp
+            )
+        } else {
+            UsageCard(title = "Penggunaan Listrik") {
+                LineUsageChart(usageData)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            UsageCard(title = "Penggunaan Perangkat") {
+                BarUsageChart(usageData)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Grafik Penggunaan Perangkat
-        UsageCard(title = "Penggunaan Perangkat") {
-            BarUsageChart()
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -153,7 +184,18 @@ fun UsageCard(title: String, content: @Composable () -> Unit) {
 
 
 @Composable
-fun LineUsageChart() {
+fun LineUsageChart(usageData: List<UsageData>) {
+    if (usageData.isEmpty()) {
+        Text(
+            text = "Data power belum tersedia",
+            modifier = Modifier.padding(16.dp),
+            fontSize = 16.sp
+        )
+        return
+    }
+
+    val powerValues = usageData.map { it.power }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,9 +207,9 @@ fun LineUsageChart() {
             data = remember {
                 listOf(
                     Line(
-                        label = "Listrik",
-                        values = listOf(170.0, 160.0, 155.0, 165.0, 180.0),
-                        color = SolidColor(Color(0xFF3F51B5)), // Biru lebih soft
+                        label = "Power (W)",
+                        values = powerValues,
+                        color = SolidColor(Color(0xFF3F51B5)),
                         firstGradientFillColor = Color(0xFF3F51B5).copy(alpha = .3f),
                         secondGradientFillColor = Color.Transparent,
                         strokeAnimationSpec = tween(2000, easing = EaseInOutCubic),
@@ -177,27 +219,42 @@ fun LineUsageChart() {
                 )
             },
             animationMode = AnimationMode.Together(delayBuilder = { it * 500L }),
-            maxValue = 200.0,
+            maxValue = powerValues.maxOrNull() ?: 200.0,
         )
     }
 }
 
 @Composable
-fun BarUsageChart() {
+fun BarUsageChart(usageData: List<UsageData>) {
+    if (usageData.isEmpty()) {
+        Text(
+            text = "Data perangkat belum tersedia",
+            modifier = Modifier.padding(16.dp),
+            fontSize = 16.sp
+        )
+        return
+    }
+
+    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault()) // Format waktu
+    val barsData = usageData.map {
+        Bars(
+            label = dateFormat.format(it.timestamp.toDate()), // Format waktu untuk sumbu X
+            values = listOf(
+                Bars.Data(label = "Power", value = it.power, color = SolidColor(Color(0xFFE53935))),
+                Bars.Data(label = "Energy", value = it.energy, color = SolidColor(Color(0xFF3F51B5))),
+                Bars.Data(label = "Current", value = it.current, color = SolidColor(Color(0xFF43A047)))
+            )
+        )
+    }
+
     ColumnChart(
         modifier = Modifier
             .fillMaxWidth()
             .height(250.dp)
             .padding(horizontal = 16.dp),
-        data = remember {
-            listOf(
-                Bars(label = "Jan", values = listOf(Bars.Data(label = "Perangkat", value = 70.0, color = SolidColor(Color(0xFFE53935))))),
-                Bars(label = "Feb", values = listOf(Bars.Data(label = "Perangkat", value = 50.0, color = SolidColor(Color(0xFFE53935))))),
-                Bars(label = "Mar", values = listOf(Bars.Data(label = "Perangkat", value = 60.0, color = SolidColor(Color(0xFFE53935))))),
-            )
-        },
+        data = barsData,
         barProperties = BarProperties(spacing = 5.dp),
-        maxValue = 100.0
+        maxValue = barsData.maxOfOrNull { it.values.maxOf { v -> v.value } } ?: 100.0
     )
 }
 

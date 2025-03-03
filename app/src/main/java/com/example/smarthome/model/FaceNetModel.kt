@@ -2,6 +2,10 @@ package com.example.smarthome.model
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.graphics.Rect
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
@@ -11,12 +15,10 @@ class FaceNetModel(context: Context) {
     private val interpreter: Interpreter
 
     init {
-        // Load model dari assets atau dari storage
         val modelFile = loadModelFile(context, "facenet.tflite")
         interpreter = Interpreter(modelFile)
     }
 
-    // Fungsi untuk memuat model dari assets
     private fun loadModelFile(context: Context, modelName: String): ByteBuffer {
         val assetFileDescriptor = context.assets.openFd(modelName)
         val inputStream = assetFileDescriptor.createInputStream()
@@ -28,9 +30,7 @@ class FaceNetModel(context: Context) {
         }
     }
 
-    // Fungsi untuk mendapatkan embedding wajah
     fun getFaceEmbedding(bitmap: Bitmap, boundingBox: Rect): FloatArray {
-        // Validasi bounding box agar tidak keluar dari batas bitmap
         val x = boundingBox.left.coerceIn(0, bitmap.width)
         val y = boundingBox.top.coerceIn(0, bitmap.height)
         val width = boundingBox.width().coerceAtMost(bitmap.width - x)
@@ -42,33 +42,47 @@ class FaceNetModel(context: Context) {
 
         val croppedFace = Bitmap.createBitmap(bitmap, x, y, width, height)
 
-        // Pastikan bitmap dalam format RGB
-        val rgbFace = croppedFace.copy(Bitmap.Config.ARGB_8888, true)
+        // 🔹 Konversi ke grayscale dengan metode yang lebih efisien
+        val grayscaleFace = croppedFace.toGrayscale()
 
-        // Resize gambar ke 160x160 sebelum dikirim ke model
-        val resizedFace = Bitmap.createScaledBitmap(rgbFace, 160, 160, true)
+        // 🔹 Resize dengan opsi filtering untuk efisiensi memori
+        val resizedFace = Bitmap.createScaledBitmap(grayscaleFace, 160, 160, false)
 
-        val inputBuffer = ByteBuffer.allocateDirect(160 * 160 * 3 * 4) // 160x160x3 (RGB) * 4 bytes per float
+        // 🔹 Pastikan membebaskan bitmap yang tidak dipakai lagi
+        croppedFace.recycle()
+        grayscaleFace.recycle()
+
+        val inputBuffer = ByteBuffer.allocateDirect(160 * 160 * 3 * 4)
         inputBuffer.order(ByteOrder.nativeOrder())
 
         for (y in 0 until 160) {
             for (x in 0 until 160) {
                 val pixel = resizedFace.getPixel(x, y)
+                val gray = (pixel shr 16 and 0xFF) / 255f
 
-                // Jika model Python pakai normalisasi [-1,1], ubah ke:
-                val r = ((pixel shr 16 and 0xFF) - 127.5f) / 127.5f
-                val g = ((pixel shr 8 and 0xFF) - 127.5f) / 127.5f
-                val b = ((pixel and 0xFF) - 127.5f) / 127.5f
-
-                inputBuffer.putFloat(r)
-                inputBuffer.putFloat(g)
-                inputBuffer.putFloat(b)
+                inputBuffer.putFloat(gray)
+                inputBuffer.putFloat(gray)
+                inputBuffer.putFloat(gray)
             }
         }
+
+        // 🔹 Bebaskan memori setelah digunakan
+        resizedFace.recycle()
 
         val outputArray = Array(1) { FloatArray(512) }
         interpreter.run(inputBuffer, outputArray)
 
         return outputArray[0]
+    }
+
+    // 🔹 Fungsi untuk konversi grayscale tanpa duplikasi memori besar
+    private fun Bitmap.toGrayscale(): Bitmap {
+        return copy(Bitmap.Config.ARGB_8888, true).apply {
+            val canvas = Canvas(this)
+            val paint = Paint()
+            val colorMatrix = ColorMatrix().apply { setSaturation(0f) }
+            paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+            canvas.drawBitmap(this, 0f, 0f, paint)
+        }
     }
 }

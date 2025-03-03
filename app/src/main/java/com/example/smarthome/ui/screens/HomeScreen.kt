@@ -215,6 +215,8 @@ fun HomeScreen(navController: NavController?) {
                 onCancel = { showEditDialog = false } // Tambahkan ini agar dialog bisa ditutup tanpa menyimpan
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 

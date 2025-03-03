@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,72 +58,53 @@ fun FaceLoginBottomSheet(
     var latestBoundingBox by remember { mutableStateOf<android.graphics.Rect?>(null) }
 
     var buttonText by remember { mutableStateOf("Login dengan Wajah") }
-    var isButtonEnabled by remember { mutableStateOf(true) } // Untuk delay button
+    var isButtonEnabled by remember { mutableStateOf(true) }
 
-    val minFaceSize = 250 * 250  // 30 cm (wajah lebih kecil)
-    val maxFaceSize = 400 * 400  // 20 cm (wajah lebih besar)
+    val minFaceSize = 250 * 250
+    val maxFaceSize = 400 * 400
 
     val onFacesDetected: (List<Face>, Bitmap) -> Unit = { faces, bitmap ->
+        latestFaceBitmap?.recycle() // Pastikan membebaskan bitmap lama
+
         if (faces.isNotEmpty()) {
-            val largestFace = faces.maxByOrNull { face ->
-                face.boundingBox.width() * face.boundingBox.height()
-            }
+            val largestFace = faces.maxByOrNull { face -> face.boundingBox.width() * face.boundingBox.height() }
 
             if (largestFace != null) {
                 val faceArea = largestFace.boundingBox.width() * largestFace.boundingBox.height()
 
                 if (faceArea in minFaceSize..maxFaceSize) {
                     faceDetected = true
-                    latestFaceBitmap = bitmap
+                    latestFaceBitmap =
+                        bitmap.config?.let { bitmap.copy(it, true) } // Simpan copy untuk diproses
+                    bitmap.recycle() // Bebaskan yang asli
                     latestBoundingBox = largestFace.boundingBox
                     buttonText = "Login dengan Wajah"
                     Log.d("FaceRecognition", "Wajah valid dengan bounding box: ${largestFace.boundingBox}")
                 } else {
                     faceDetected = false
-                    latestFaceBitmap = null
                     latestBoundingBox = null
-
-                    buttonText = when {
-                        faceArea < minFaceSize -> "Jarak terlalu jauh"
-                        faceArea > maxFaceSize -> "Jarak terlalu dekat"
-                        else -> "Jarak wajah tidak sesuai"
-                    }
-
-                    Log.w("FaceRecognition", buttonText)
+                    buttonText = if (faceArea < minFaceSize) "Jarak terlalu jauh" else "Jarak terlalu dekat"
                 }
             }
         } else {
             faceDetected = false
-            latestFaceBitmap = null
             latestBoundingBox = null
             buttonText = "Tidak ada wajah terdeteksi"
-            Log.d("FaceRecognition", "Tidak ada wajah terdeteksi")
         }
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.White)
-                .padding(20.dp),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White).padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("Face Authentication", fontSize = 18.sp, color = Color.Black)
-
             Spacer(modifier = Modifier.height(10.dp))
-
             Box(
-                modifier = Modifier
-                    .size(250.dp)
-                    .clip(CircleShape)
-                    .background(Color.Gray),
+                modifier = Modifier.size(250.dp).clip(CircleShape).background(Color.Gray),
                 contentAlignment = Alignment.Center
             ) {
                 CameraPreview(
@@ -130,33 +112,33 @@ fun FaceLoginBottomSheet(
                     onFacesDetected = onFacesDetected
                 )
             }
-
             Spacer(modifier = Modifier.height(20.dp))
-
+            val coroutineScope = rememberCoroutineScope()
             Button(
                 onClick = {
                     if (faceDetected && latestFaceBitmap != null && isButtonEnabled) {
                         isProcessing = true
-                        isButtonEnabled = false // Matikan button sementara
+                        isButtonEnabled = false
                         buttonText = "Memproses..."
 
                         try {
                             faceEmbedding = faceNetModel.getFaceEmbedding(latestFaceBitmap!!, latestBoundingBox!!)
+                            latestFaceBitmap?.recycle()
+                            latestFaceBitmap = null
+
                             authenticateWithFace(faceEmbedding!!, context, navController) {
                                 isProcessing = false
                                 buttonText = "Login dengan Wajah"
-
-                                // Delay sebelum button bisa ditekan lagi
-                                kotlinx.coroutines.GlobalScope.launch {
-                                    kotlinx.coroutines.delay(1000) // 2 detik
-                                    isButtonEnabled = true // Aktifkan button kembali
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(1000)
+                                    isButtonEnabled = true
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e("FaceLogin", "Gagal mendapatkan embedding wajah: ${e.message}", e)
+                            Log.e("FaceLogin", "Error mendapatkan embedding wajah: ${e.message}", e)
                             buttonText = "Terjadi kesalahan"
                             isProcessing = false
-                            isButtonEnabled = true // Pastikan button bisa ditekan kembali
+                            isButtonEnabled = true
                         }
                     }
                 },
@@ -169,7 +151,6 @@ fun FaceLoginBottomSheet(
     }
 }
 
-
 fun authenticateWithFace(
     faceEmbedding: FloatArray,
     context: Context,
@@ -178,19 +159,14 @@ fun authenticateWithFace(
 ) {
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
-
     Log.d("FaceAuth", "Memulai autentikasi wajah...")
-
-    // Log embedding hasil scan
     Log.d("FaceAuth", "Embedding wajah hasil scan: ${faceEmbedding.joinToString()}")
 
     db.collection("users").get()
         .addOnSuccessListener { documents ->
-            Log.d("FaceAuth", "Berhasil mengambil data pengguna dari Firestore.")
-
             var bestMatchEmail: String? = null
             var bestMatchPassword: String? = null
-            var minDistance = Float.MAX_VALUE // Inisialisasi dengan nilai terbesar
+            var minDistance = Float.MAX_VALUE
 
             for (document in documents) {
                 val storedEmbedding = (document.get("faceEmbedding") as? List<Double>)?.map { it.toFloat() }
@@ -198,51 +174,38 @@ fun authenticateWithFace(
                 val encryptedPassword = document.getString("encryptedPassword")
 
                 if (storedEmbedding != null && email != null && encryptedPassword != null) {
-                    // Log embedding dari Firestore
                     Log.d("FaceAuth", "Embedding wajah dari Firestore untuk $email: ${storedEmbedding.joinToString()}")
-
                     val distance = calculateEuclideanDistance(faceEmbedding, storedEmbedding.toFloatArray())
-
                     Log.d("FaceAuth", "Comparing face with user $email, distance: $distance")
-
-                    // Simpan kandidat terbaik dengan jarak terkecil
                     if (distance < minDistance) {
                         minDistance = distance
                         bestMatchEmail = email
                         bestMatchPassword = encryptedPassword
                     }
                 }
+                onComplete()
             }
 
-            if (bestMatchEmail != null && minDistance < 0.60) {
+            if (bestMatchEmail != null && minDistance < 0.45) {
                 Log.d("FaceAuth", "Wajah cocok dengan pengguna $bestMatchEmail, distance: $minDistance")
-
                 try {
-                    val decryptedPassword = AESUtil.decrypt(bestMatchPassword!!) // Dekripsi password
+                    val decryptedPassword = AESUtil.decrypt(bestMatchPassword!!)
                     Log.d("FaceAuth", "Password berhasil didekripsi.")
-
                     auth.signInWithEmailAndPassword(bestMatchEmail, decryptedPassword)
                         .addOnSuccessListener {
                             Log.d("FaceAuth", "Login berhasil untuk $bestMatchEmail")
                             Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
                             navController?.navigate(Screen.Home.route)
                         }
-                        .addOnFailureListener { e ->
-                            Log.e("FaceAuth", "Login gagal untuk $bestMatchEmail: ${e.message}", e)
+                        .addOnFailureListener {
                             Toast.makeText(context, "Login Gagal!", Toast.LENGTH_SHORT).show()
                         }
                 } catch (e: Exception) {
-                    Log.e("FaceAuth", "Gagal mendekripsi password: ${e.message}", e)
-                    Toast.makeText(context, "Terjadi kesalahan saat mendekripsi password!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Error saat mendekripsi password!", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Log.w("FaceAuth", "Wajah tidak dikenali di database.")
                 Toast.makeText(context, "Wajah tidak dikenali!", Toast.LENGTH_SHORT).show()
             }
-        }
-        .addOnFailureListener { e ->
-            Log.e("FaceAuth", "Error saat mengambil data Firestore: ${e.message}", e)
-            Toast.makeText(context, "Error saat login!", Toast.LENGTH_SHORT).show()
         }
         .addOnCompleteListener { onComplete() }
 }
@@ -253,6 +216,5 @@ fun calculateEuclideanDistance(embedding1: FloatArray, embedding2: FloatArray): 
         val diff = embedding1[i] - embedding2[i]
         sum += diff * diff
     }
-    return sqrt(sum.toFloat()) // Sama seperti np.linalg.norm() di Python
+    return sqrt(sum.toFloat())
 }
-
