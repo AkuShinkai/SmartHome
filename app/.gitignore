@@ -1,0 +1,4 @@
+/build
+/src/main/java/com/example/smarthome/security/
+/src/main/java/com/example/smarthome/security/AESUtil.kt
+/src/main/java/com/example/smarthome/security/ApiKey.kt
