@@ -7,11 +7,14 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
+import android.widget.ImageView
 import org.tensorflow.lite.Interpreter
+import java.io.File
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class FaceNetModel(context: Context) {
+class FaceNetModel(private val context: Context) {
     private val interpreter: Interpreter
 
     init {
@@ -30,7 +33,7 @@ class FaceNetModel(context: Context) {
         }
     }
 
-    fun getFaceEmbedding(bitmap: Bitmap, boundingBox: Rect): FloatArray {
+    fun getFaceEmbedding(bitmap: Bitmap, boundingBox: Rect, imageView: ImageView? = null): FloatArray {
         val x = boundingBox.left.coerceIn(0, bitmap.width)
         val y = boundingBox.top.coerceIn(0, bitmap.height)
         val width = boundingBox.width().coerceAtMost(bitmap.width - x)
@@ -41,16 +44,18 @@ class FaceNetModel(context: Context) {
         }
 
         val croppedFace = Bitmap.createBitmap(bitmap, x, y, width, height)
+        debugSaveImage(context, croppedFace, "cropped.png")
 
-        // 🔹 Konversi ke grayscale dengan metode yang lebih efisien
         val grayscaleFace = croppedFace.toGrayscale()
+        debugSaveImage(context, grayscaleFace, "grayscale.png")
 
-        // 🔹 Resize dengan opsi filtering untuk efisiensi memori
         val resizedFace = Bitmap.createScaledBitmap(grayscaleFace, 160, 160, false)
+        debugSaveImage(context, resizedFace, "resized.png")
 
-        // 🔹 Pastikan membebaskan bitmap yang tidak dipakai lagi
         croppedFace.recycle()
         grayscaleFace.recycle()
+
+        imageView?.setImageBitmap(resizedFace)
 
         val inputBuffer = ByteBuffer.allocateDirect(160 * 160 * 3 * 4)
         inputBuffer.order(ByteOrder.nativeOrder())
@@ -66,7 +71,6 @@ class FaceNetModel(context: Context) {
             }
         }
 
-        // 🔹 Bebaskan memori setelah digunakan
         resizedFace.recycle()
 
         val outputArray = Array(1) { FloatArray(512) }
@@ -75,7 +79,6 @@ class FaceNetModel(context: Context) {
         return outputArray[0]
     }
 
-    // 🔹 Fungsi untuk konversi grayscale tanpa duplikasi memori besar
     private fun Bitmap.toGrayscale(): Bitmap {
         return copy(Bitmap.Config.ARGB_8888, true).apply {
             val canvas = Canvas(this)
@@ -84,5 +87,11 @@ class FaceNetModel(context: Context) {
             paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
             canvas.drawBitmap(this, 0f, 0f, paint)
         }
+    }
+
+    private fun debugSaveImage(context: Context, bitmap: Bitmap, fileName: String) {
+        val file = File(context.getExternalFilesDir(null), fileName)
+        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        println("Saved image: ${file.absolutePath}")
     }
 }

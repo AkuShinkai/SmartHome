@@ -41,7 +41,14 @@ fun CameraPreview(modifier: Modifier = Modifier, onFacesDetected: (List<Face>, B
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                         .also {
-                            it.setAnalyzer(ContextCompat.getMainExecutor(ctx), FaceAnalyzer(onFacesDetected))
+                            it.setAnalyzer(
+                                ContextCompat.getMainExecutor(ctx),
+                                FaceAnalyzer(
+                                    context = ctx,  // Tambahkan context
+                                    imageView = null,  // Jika tidak menggunakan ImageView, berikan null
+                                    onFacesDetected = onFacesDetected
+                                )
+                            )
                         }
 
                     try {

@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-//    id ("org.jetbrains.kotlin.android") version "2.0.0" apply false
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.kotlin.android)
@@ -36,14 +35,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-//    kotlinOptions {
-//        jvmTarget = "17"
-//    }
     buildFeatures {
         compose = true
         buildConfig = true
     }
-
+    kotlinOptions {
+        jvmTarget = "21"
+    }
     aaptOptions{
         noCompress ("tflite")
     }
