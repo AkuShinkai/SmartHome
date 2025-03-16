@@ -34,12 +34,15 @@ import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,16 +52,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.smarthome.R
 import com.example.smarthome.api.WeatherRepository
 import com.example.smarthome.data.WeatherResponse
@@ -88,7 +93,7 @@ fun HomeScreen(navController: NavController?) {
         )
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(key1 = true) {
         weather = repository.getWeather("Madiun", ApiKey.WEATHER_API_KEY)
     }
 
@@ -111,11 +116,11 @@ fun HomeScreen(navController: NavController?) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
 
-        Text(text = "Home", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Home", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
         Spacer(modifier = Modifier.height(8.dp))
         if (userName == null) {
             CircularProgressIndicator()
@@ -190,15 +195,6 @@ fun HomeScreen(navController: NavController?) {
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Penggunaan Perangkat",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
             DeviceUsageChart(navController) { route ->
                 navController?.navigate(route)
             }
@@ -339,31 +335,22 @@ fun DeviceCard(
     icon: ImageVector,
     initialState: Boolean = false
 ) {
-    var isOn by remember { mutableStateOf(initialState) } // State ON/OFF
-    var power by remember { mutableStateOf("") } // Daya perangkat
-    var time by remember { mutableStateOf("") } // Waktu penggunaan
+    var isOn by remember { mutableStateOf(initialState) }
+    var power by remember { mutableStateOf("") }
+    var time by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
             .wrapContentHeight()
             .width(168.dp)
-            .background(if (isOn) Color(0xFFBDBDBD) else Color(0xFFE0E0E0), RoundedCornerShape(12.dp)) // Warna berubah saat ON
-            .clickable {
-                isOn = !isOn
-                if (isOn) {
-                    power = "10W"  // Set daya ketika menyala
-                    time = "02:34" // Set waktu ketika menyala
-                } else {
-                    power = ""  // Hapus daya ketika mati
-                    time = ""   // Hapus waktu ketika mati
-                }
-            }
+            .background(if (isOn) Color(0xFFBDBDBD) else Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
             .padding(15.dp)
     ) {
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Ikon dalam lingkaran putih
                 Box(
@@ -374,6 +361,27 @@ fun DeviceCard(
                 ) {
                     Icon(icon, contentDescription = name, tint = Color.Black)
                 }
+
+                // Switch untuk ON/OFF
+                Switch(
+                    checked = isOn,
+                    onCheckedChange = { state ->
+                        isOn = state
+                        if (isOn) {
+                            power = "10W"
+                            time = "02:34"
+                        } else {
+                            power = ""
+                            time = ""
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color.Green,
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color.LightGray
+                    )
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -383,9 +391,9 @@ fun DeviceCard(
 
             // Status Perangkat
             if (isOn) {
-                Text(text = "🟢 ON  $power  ⏳$time", fontSize = 12.sp) // Menampilkan daya & waktu jika ON
+                Text(text = "🟢 ON  $power  ⏳$time", fontSize = 12.sp)
             } else {
-                Text(text = "⚫ OFF", fontSize = 12.sp) // Hanya "OFF" jika mati
+                Text(text = "⚫ OFF", fontSize = 12.sp)
             }
         }
     }
@@ -404,73 +412,102 @@ fun WeatherCard(
     feelsLike: Int,
     humidity: Int,
     windSpeed: Int,
-    airQualityIndex: Int // Tambahkan indeks kualitas udara
+    airQualityIndex: Int
 ) {
-    val (isVector, icon) = getWeatherIcon(condition)
+    val backgroundImage = painterResource(id = getWeatherBackgroundImage(condition))
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1E1E1E), RoundedCornerShape(16.dp))
-            .padding(16.dp)
+            .height(180.dp) // Sesuaikan tinggi card
+            .clip(RoundedCornerShape(16.dp))
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.SpaceBetween
+        // 🔹 Background Image
+        AsyncImage(
+            model = getWeatherBackgroundImage(condition),
+            contentDescription = "Weather Background",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // 🔹 Overlay agar teks tetap terbaca
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f)) // Tambahkan efek gelap transparan
+                .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isVector) {
-                        Icon(
-                            imageVector = icon as ImageVector,
-                            contentDescription = "Weather Icon",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    } else {
-                        Image(
-                            painter = painterResource(id = icon as Int),
-                            contentDescription = "Weather Icon",
-                            modifier = Modifier.size(32.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val (isVector, icon) = getWeatherIcon(condition)
+                        if (isVector) {
+                            Icon(
+                                imageVector = icon as ImageVector,
+                                contentDescription = "Weather Icon",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = icon as Int),
+                                contentDescription = "Weather Icon",
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = condition,
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = condition,
+                        text = "$temperature°",
                         color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
+
                 Text(
-                    text = "$temperature°",
+                    text = location,
                     color = Color.White,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 14.sp
                 )
-            }
 
-            Text(
-                text = location,
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                WeatherInfoItem(label = "Feels Like", value = "$feelsLike°C")
-                WeatherInfoItem(label = "Humidity", value = "$humidity%")
-                WeatherInfoItem(label = "Wind", value = "$windSpeed km/h")
-                WeatherInfoItem(label = "AQI", value = airQualityIndex.toString()) // Tambahkan AQI
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    WeatherInfoItem(label = "Feels Like", value = "$feelsLike°C")
+                    WeatherInfoItem(label = "Humidity", value = "$humidity%")
+                    WeatherInfoItem(label = "Wind", value = "$windSpeed km/h")
+                    WeatherInfoItem(label = "AQI", value = airQualityIndex.toString())
+                }
             }
         }
+    }
+}
+
+@Composable
+fun getWeatherBackgroundImage(condition: String): Int {
+    return when (condition.lowercase()) {
+        "clear", "sunny" -> R.drawable.sunny_bg2
+        "clouds", "partly cloudy" -> R.drawable.bg_cloudy
+        "rain", "light rain", "moderate rain", "heavy rain", "drizzle" -> R.drawable.bg_rainy
+        "thunderstorm" -> R.drawable.bg_thunderstorm
+        else -> R.drawable.unkown_bg
     }
 }
 
@@ -492,12 +529,12 @@ fun getWeatherIcon(condition: String): Pair<Boolean, Any> {
 fun WeatherInfoItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text(text = label, color = Color.Gray, fontSize = 12.sp)
+        Text(text = label, color = Color.White, fontSize = 12.sp)
     }
 }
 
 @Composable
-fun DeviceUsageChart(navController: NavController? ,onNavigate: (String) -> Unit) {
+fun DeviceUsageChart(navController: NavController?, onNavigate: (String) -> Unit) {
     var selectedPieIndex by remember { mutableStateOf<Int?>(null) }
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipText by remember { mutableStateOf("") }
@@ -511,58 +548,92 @@ fun DeviceUsageChart(navController: NavController? ,onNavigate: (String) -> Unit
         )
     }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            PieChart(
-                modifier = Modifier.size(200.dp),
-                data = data,
-                onPieClick = { clickedPie ->
-                    val pieIndex = data.indexOf(clickedPie)
-                    if (selectedPieIndex == pieIndex) {
-                        showTooltip = false
-                        selectedPieIndex = null
-                    } else {
-                        selectedPieIndex = pieIndex
-                        tooltipText = "${clickedPie.label}: ${clickedPie.data}%"
-                        showTooltip = true
-                    }
+    val total = data.sumOf { it.data }
 
-                    data = data.mapIndexed { index, pie -> pie.copy(selected = selectedPieIndex == index) }
-                },
-                selectedScale = 1.2f,
-                selectedPaddingDegree = 4f,
-                style = Pie.Style.Stroke()
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Penggunaan Perangkat",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
             )
 
-            // Tooltip muncul di atas pie chart
-            if (showTooltip) {
-                Popup(alignment = Alignment.TopCenter) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color.Black, shape = RoundedCornerShape(8.dp))
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                PieChart(
+                    modifier = Modifier.size(200.dp),
+                    data = data,
+                    onPieClick = { clickedPie ->
+                        val pieIndex = data.indexOf(clickedPie)
+                        if (selectedPieIndex == pieIndex) {
+                            showTooltip = false
+                            selectedPieIndex = null
+                        } else {
+                            selectedPieIndex = pieIndex
+                            tooltipText = "${clickedPie.label}: ${clickedPie.data}%"
+                            showTooltip = true
+                        }
+
+                        data = data.mapIndexed { index, pie -> pie.copy(selected = selectedPieIndex == index) }
+                    },
+                    selectedScale = 1.2f,
+                    selectedPaddingDegree = 4f,
+                    style = Pie.Style.Stroke()
+                )
+
+                // Tooltip muncul di atas pie chart
+                if (showTooltip) {
+                    Popup(alignment = Alignment.TopCenter) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color.Black, shape = RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tooltipText,
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Legend dengan persentase
+            Column {
+                data.forEach { pie ->
+                    val percentage = (pie.data / total * 100).toInt() // Hitung persentase
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
                     ) {
-                        Text(
-                            text = tooltipText,
-                            color = Color.White,
-                            fontSize = 14.sp
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(pie.color, shape = CircleShape)
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        pie.label?.let { Text(text = it, fontSize = 14.sp, modifier = Modifier.weight(1f)) }
+                        Text(text = "$percentage%", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    HomeScreen(navController = null)
 }

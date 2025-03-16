@@ -35,10 +35,12 @@ import androidx.navigation.NavController
 import com.example.smarthome.CameraPreview
 import com.example.smarthome.model.FaceNetModel
 import com.example.smarthome.security.AESUtil
+import com.example.smarthome.session.SessionManager
 import com.example.smarthome.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.face.Face
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.sqrt
 
@@ -59,6 +61,8 @@ fun FaceLoginBottomSheet(
 
     var buttonText by remember { mutableStateOf("Login dengan Wajah") }
     var isButtonEnabled by remember { mutableStateOf(true) }
+
+    val sessionManager = remember { SessionManager(context) }
 
     val minFaceSize = 250 * 250
     val maxFaceSize = 400 * 400
@@ -126,7 +130,13 @@ fun FaceLoginBottomSheet(
                             latestFaceBitmap?.recycle()
                             latestFaceBitmap = null
 
-                            authenticateWithFace(faceEmbedding!!, context, navController) {
+                            authenticateWithFace(
+                                faceEmbedding!!,
+                                context,
+                                navController,
+                                sessionManager,
+                                coroutineScope // Kirim coroutineScope ke fungsi
+                            ) {
                                 isProcessing = false
                                 buttonText = "Login dengan Wajah"
                                 coroutineScope.launch {
@@ -134,6 +144,7 @@ fun FaceLoginBottomSheet(
                                     isButtonEnabled = true
                                 }
                             }
+
                         } catch (e: Exception) {
                             Log.e("FaceLogin", "Error mendapatkan embedding wajah: ${e.message}", e)
                             buttonText = "Terjadi kesalahan"
@@ -155,6 +166,8 @@ fun authenticateWithFace(
     faceEmbedding: FloatArray,
     context: Context,
     navController: NavController?,
+    sessionManager: SessionManager,
+    coroutineScope: CoroutineScope, // Tambahkan parameter ini
     onComplete: () -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()
@@ -186,7 +199,7 @@ fun authenticateWithFace(
                 onComplete()
             }
 
-            if (bestMatchEmail != null && minDistance < 0.45) {
+            if (bestMatchEmail != null && minDistance < 0.65) {
                 Log.d("FaceAuth", "Wajah cocok dengan pengguna $bestMatchEmail, distance: $minDistance")
                 try {
                     val decryptedPassword = AESUtil.decrypt(bestMatchPassword!!)
@@ -195,6 +208,11 @@ fun authenticateWithFace(
                         .addOnSuccessListener {
                             Log.d("FaceAuth", "Login berhasil untuk $bestMatchEmail")
                             Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
+
+                            coroutineScope.launch {
+                                sessionManager.saveSession(true, bestMatchEmail)
+                            }
+
                             navController?.navigate(Screen.Home.route)
                         }
                         .addOnFailureListener {

@@ -10,10 +10,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -31,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +44,7 @@ import androidx.compose.ui.unit.sp
 fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) } // State untuk show/hide password
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -52,6 +57,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Input Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { newText ->
@@ -78,6 +84,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Input Password dengan Show/Hide
             OutlinedTextField(
                 value = password,
                 onValueChange = { newText ->
@@ -87,9 +94,16 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                 },
                 label = { Text("Password") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Hide Password" else "Show Password"
+                        )
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     containerColor = Color.White,
                     focusedBorderColor = Color.Blue,
@@ -107,6 +121,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Tombol Login
             Button(
                 onClick = { onLogin(email, password) },
                 shape = RoundedCornerShape(10.dp),
@@ -118,6 +133,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                 Text("Login", fontSize = 16.sp)
             }
 
+            // Tombol Batal
             TextButton(onClick = onDismiss) {
                 Text("Batal", color = Color.Red, fontSize = 16.sp)
             }

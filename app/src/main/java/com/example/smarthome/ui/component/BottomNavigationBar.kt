@@ -24,16 +24,16 @@ fun BottomNavigationBar(
         modifier = Modifier.fillMaxWidth()
     ) {
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Bolt, contentDescription = "Usage") },
-            label = { Text("Usage") },
-            selected = selectedScreen == "Usage",
-            onClick = { onItemSelected("Usage") }
-        )
-        NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
             label = { Text("Home") },
             selected = selectedScreen == "Home",
             onClick = { onItemSelected("Home") }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Bolt, contentDescription = "Usage") },
+            label = { Text("Usage") },
+            selected = selectedScreen == "Usage",
+            onClick = { onItemSelected("Usage") }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.Person, contentDescription = "Me") },

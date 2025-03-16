@@ -12,11 +12,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -28,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,10 +43,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,8 +68,11 @@ fun RegisterScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rePassword by remember { mutableStateOf("") }
-    var agreeTerms by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var hasReadTerms by remember { mutableStateOf(false) }
+    var agreeTerms by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -105,7 +117,7 @@ fun RegisterScreen(navController: NavController) {
             ) {
                 Checkbox(
                     checked = agreeTerms,
-                    onCheckedChange = { agreeTerms = it },
+                    onCheckedChange = null, // Nonaktifkan perubahan langsung dari pengguna
                     colors = CheckboxDefaults.colors(
                         checkedColor = Color.Gray,
                         uncheckedColor = Color.Black,
@@ -117,7 +129,109 @@ fun RegisterScreen(navController: NavController) {
                     "Saya setuju dengan syarat dan ketentuan yang berlaku",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Color.Black,
+                    modifier = Modifier.clickable { showTermsDialog = true }
+                )
+            }
+            if (showTermsDialog) {
+                val scrollState = rememberScrollState()
+                var isScrolledToBottom by remember { mutableStateOf(false) }
+
+                // Cek jika pengguna telah scroll sampai bawah
+                LaunchedEffect(scrollState.value) {
+                    isScrolledToBottom = scrollState.value >= scrollState.maxValue
+                }
+
+                AlertDialog(
+                    onDismissRequest = { showTermsDialog = false },
+                    title = { Text("Syarat dan Ketentuan", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp, max = 400.dp)
+                                .verticalScroll(scrollState)
+                                .padding(16.dp)
+                        ) {
+                            val termsText = buildAnnotatedString {
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("1. Penggunaan Wajah untuk Login\n")
+                                }
+                                append("- Data wajah Anda digunakan untuk autentikasi dan disimpan dalam bentuk terenkripsi.\n")
+                                append("- Aplikasi hanya membandingkan wajah Anda dengan data yang telah didaftarkan sebelumnya.\n")
+                                append("- Kami tidak membagikan atau menjual data wajah Anda kepada pihak ketiga.\n\n")
+
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("2. Akses Kamera\n")
+                                }
+                                append("- Aplikasi memerlukan akses kamera untuk menangkap gambar wajah Anda saat login atau registrasi.\n")
+                                append("- Data yang diambil hanya digunakan untuk autentikasi dan tidak disimpan permanen tanpa izin Anda.\n\n")
+
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("3. Akses Galeri\n")
+                                }
+                                append("- Jika Anda memilih mengunggah gambar wajah dari galeri, aplikasi akan meminta izin akses penyimpanan.\n")
+                                append("- Data yang diunggah hanya digunakan untuk verifikasi wajah.\n\n")
+
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("4. Akses Internet\n")
+                                }
+                                append("- Aplikasi memerlukan koneksi internet untuk autentikasi dan penyimpanan data fitur.\n")
+                                append("- Pastikan koneksi stabil untuk pengalaman optimal.\n\n")
+
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("5. Akses Lokasi\n")
+                                }
+                                append("- Aplikasi dapat meminta akses lokasi untuk meningkatkan keamanan atau menyesuaikan layanan.\n")
+                                append("- Informasi lokasi tidak akan dibagikan tanpa izin eksplisit.\n\n")
+
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("6. Tanggung Jawab Pengguna\n")
+                                }
+                                append("- Anda bertanggung jawab atas keamanan akun dan tidak boleh membagikan akses login.\n")
+                                append("- Penyalahgunaan aplikasi dapat mengakibatkan pembatasan atau penghentian layanan.\n\n")
+
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append("7. Pembaruan Syarat dan Ketentuan\n")
+                                }
+                                append("- Kami dapat memperbarui syarat dan ketentuan sewaktu-waktu.\n")
+                                append("- Anda akan diberitahu jika ada perubahan signifikan.\n")
+                            }
+                            Text(
+                                text = termsText,
+                                fontSize = 14.sp,
+                                color = Color.Black,
+                                textAlign = TextAlign.Left,
+                                lineHeight = 20.sp
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showTermsDialog = false
+                                hasReadTerms = true
+                                agreeTerms = true // Setuju, checkbox akan aktif
+                            },
+                            modifier = Modifier.padding(8.dp),
+                            enabled = isScrolledToBottom // Hanya bisa ditekan jika sudah scroll ke bawah
+                        ) {
+                            Text("Setuju")
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = {
+                                showTermsDialog = false
+                                hasReadTerms = true
+                                agreeTerms = false // Tolak, checkbox tetap tidak aktif
+                            },
+                            modifier = Modifier.padding(8.dp),
+                            enabled = isScrolledToBottom // Hanya bisa ditekan jika sudah scroll ke bawah
+                        ) {
+                            Text("Tolak")
+                        }
+                    }
                 )
             }
 
