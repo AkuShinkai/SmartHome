@@ -62,6 +62,13 @@ import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun RegisterScreen(navController: NavController) {
+
+    val PrimaryColor = Color(0xFF2AABD5)
+    val SecondaryColor = Color(0xFF54BCDE)
+    val BackgroundColor = Color(0xFFFFFFFF)
+    val ButtonColor = Color(0xFF1A91C1)
+    val TextColor = Color(0xFF005A80)
+
     val context = LocalContext.current
 
     var name by remember { mutableStateOf("") }
@@ -77,7 +84,7 @@ fun RegisterScreen(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(PrimaryColor),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(80.dp))
@@ -90,17 +97,17 @@ fun RegisterScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Text("Register", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text("Register", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Spacer(modifier = Modifier.height(5.dp))
-        Text("Masukkan Informasi Dibawah Ini", fontSize = 14.sp, color = Color.Gray)
+        Text("Masukkan Informasi Dibawah Ini", fontSize = 14.sp, color = Color.White)
         Spacer(modifier = Modifier.height(20.dp))
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
-                .background(Color(0xFFD9D9D9))
-                .padding(horizontal = 20.dp, vertical = 20.dp),
+                .background(BackgroundColor)
+                .padding(horizontal = 20.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
@@ -258,7 +265,7 @@ fun RegisterScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
                 shape = RoundedCornerShape(10.dp),
                 enabled = !isLoading
             ) {

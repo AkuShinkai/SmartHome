@@ -68,7 +68,7 @@ fun FaceLoginBottomSheet(
     val maxFaceSize = 400 * 400
 
     val onFacesDetected: (List<Face>, Bitmap) -> Unit = { faces, bitmap ->
-        latestFaceBitmap?.recycle() // Pastikan membebaskan bitmap lama
+        latestFaceBitmap?.recycle()
 
         if (faces.isNotEmpty()) {
             val largestFace = faces.maxByOrNull { face -> face.boundingBox.width() * face.boundingBox.height() }
@@ -102,7 +102,12 @@ fun FaceLoginBottomSheet(
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White).padding(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White)
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("Face Authentication", fontSize = 18.sp, color = Color.Black)
@@ -135,7 +140,7 @@ fun FaceLoginBottomSheet(
                                 context,
                                 navController,
                                 sessionManager,
-                                coroutineScope // Kirim coroutineScope ke fungsi
+                                coroutineScope
                             ) {
                                 isProcessing = false
                                 buttonText = "Login dengan Wajah"
@@ -157,6 +162,16 @@ fun FaceLoginBottomSheet(
                 enabled = isButtonEnabled && buttonText == "Login dengan Wajah" && !isProcessing
             ) {
                 Text(buttonText)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Tombol Batal
+            Button(
+                onClick = { onDismiss() },
+                modifier = Modifier.fillMaxWidth(0.8f),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(Color.Gray)
+            ) {
+                Text("Batal", color = Color.White)
             }
         }
     }

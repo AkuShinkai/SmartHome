@@ -22,7 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,6 +49,12 @@ import com.example.smarthome.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
+val PrimaryColor = Color(0xFF2AABD5)
+val SecondaryColor = Color(0xFF54BCDE)
+val BackgroundColor = Color(0xFFFFFFFF)
+val ButtonColor = Color(0xFF1A91C1)
+val TextColor = Color(0xFF005A80)
+
 @Composable
 fun AuthScreen(navController: NavController?) {
     var showLoginSheet by remember { mutableStateOf(false) }
@@ -59,21 +65,22 @@ fun AuthScreen(navController: NavController?) {
     val scope = rememberCoroutineScope()
 
     Column(
-        modifier = Modifier.fillMaxSize()
-            .background(Color.Transparent)
+        modifier = Modifier.fillMaxSize().background(BackgroundColor)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1.4f)
-                .background(Color.Gray, shape = RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp)),
+                .background(brush = Brush.linearGradient(
+                    colors = listOf(Color(0xff7e02d6), Color( 0xFF2AABD5), Color(0xFF54BCDE), Color( 0xFF2AABD5),Color(0xff7e02d6))
+                ), shape = RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp)),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
                     .size(150.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color.LightGray),
+                    .background(PrimaryColor),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -87,7 +94,7 @@ fun AuthScreen(navController: NavController?) {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.6f)
-                .background(Color.Transparent)
+                .background(BackgroundColor)
                 .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -99,12 +106,12 @@ fun AuthScreen(navController: NavController?) {
                 Button(
                     onClick = { showLoginSheet = true },
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonColor),
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp)
                 ) {
-                    Text(text = "Login", color = Color.Black, fontSize = 20.sp)
+                    Text(text = "Login", color = Color.White, fontSize = 20.sp)
                 }
 
                 Spacer(modifier = Modifier.width(15.dp))
@@ -114,12 +121,12 @@ fun AuthScreen(navController: NavController?) {
                     modifier = Modifier
                         .size(60.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.LightGray)
+                        .background(ButtonColor)
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.familiar_face_and_zone_48px),
                         contentDescription = "Face Recognition",
-                        tint = Color.DarkGray
+                        tint = Color.White
                     )
                 }
             }
@@ -127,12 +134,12 @@ fun AuthScreen(navController: NavController?) {
             Spacer(modifier = Modifier.height(25.dp))
 
             Row {
-                Text(text = "Belum Mempunyai Akun?", fontSize = 18.sp, color = Color.Gray)
+                Text(text = "Belum Mempunyai Akun?", fontSize = 18.sp, color = TextColor)
                 Spacer(modifier = Modifier.width(5.dp))
                 Text(
                     text = "Daftar",
                     fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = PrimaryColor,
                     modifier = Modifier.clickable { navController?.navigate(Screen.Register.route) }
                 )
             }

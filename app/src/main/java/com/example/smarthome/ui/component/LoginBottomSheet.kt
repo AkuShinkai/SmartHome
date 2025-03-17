@@ -39,6 +39,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// Warna monokromatik
+val PrimaryColor = Color(0xFF2AABD5)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
@@ -46,12 +49,12 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) } // State untuk show/hide password
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("Login", fontWeight = FontWeight.Bold, fontSize = 22.sp)
 
@@ -75,7 +78,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     cursorColor = Color.Black,
                     unfocusedTextColor = Color.Gray,
                     focusedTextColor = Color.Black,
-                    focusedLabelColor = Color.White
+                    focusedLabelColor = Color.Black
                 ),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done
@@ -111,7 +114,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     cursorColor = Color.Black,
                     unfocusedTextColor = Color.Gray,
                     focusedTextColor = Color.Black,
-                    focusedLabelColor = Color.White
+                    focusedLabelColor = Color.Black
                 ),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Password,
@@ -128,7 +131,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
             ) {
                 Text("Login", fontSize = 16.sp)
             }

@@ -10,9 +10,12 @@ import android.graphics.Rect
 import android.widget.ImageView
 import org.tensorflow.lite.Interpreter
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 class FaceNetModel(private val context: Context) {
     private val interpreter: Interpreter
@@ -22,15 +25,11 @@ class FaceNetModel(private val context: Context) {
         interpreter = Interpreter(modelFile)
     }
 
-    private fun loadModelFile(context: Context, modelName: String): ByteBuffer {
+    private fun loadModelFile(context: Context, modelName: String): MappedByteBuffer {
         val assetFileDescriptor = context.assets.openFd(modelName)
-        val inputStream = assetFileDescriptor.createInputStream()
-        val byteArray = inputStream.readBytes()
-        return ByteBuffer.allocateDirect(byteArray.size).apply {
-            order(ByteOrder.nativeOrder())
-            put(byteArray)
-            rewind()
-        }
+        val fileInputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
+        val fileChannel = fileInputStream.channel
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, assetFileDescriptor.startOffset, assetFileDescriptor.declaredLength)
     }
 
     fun getFaceEmbedding(bitmap: Bitmap, boundingBox: Rect, imageView: ImageView? = null): FloatArray {
