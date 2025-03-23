@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +53,13 @@ import java.util.Locale
 
 @Composable
 fun UsageScreen(navController: NavController?) {
+
+    val PrimaryColor = Color(0xFF2AABD5)
+    val SecondaryColor = Color(0xFF54BCDE)
+    val BackgroundColor = Color(0xFFF3F3F3)
+    val ButtonColor = Color(0xFF1A91C1)
+    val TextColor = Color(0xFF005A80)
+
     val scope = rememberCoroutineScope()
     var usageData by remember { mutableStateOf<List<UsageData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -67,44 +73,35 @@ fun UsageScreen(navController: NavController?) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.White)
             .verticalScroll(rememberScrollState())
     ) {
+        UsageInfoSection()
+
         Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.BottomCenter
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)) // Lekukan atas
+                .background(BackgroundColor) // Warna abu-abu
+                .padding(top = 16.dp, bottom = 16.dp) // Spasi agar tidak terlalu mepet
         ) {
-            Column {
-                UsageInfoSection()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                UsageCard(title = "Penggunaan Listrik") {
+                    LineUsageChart(usageData)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                UsageCard(title = "Penggunaan Perangkat") {
+                    BarUsageChart(usageData)
+                }
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isLoading) {
-            Text(
-                text = "Memuat data...",
-                modifier = Modifier.padding(16.dp),
-                fontSize = 16.sp
-            )
-        } else if (usageData.isEmpty()) {
-            Text(
-                text = "Tidak ada data untuk ditampilkan",
-                modifier = Modifier.padding(16.dp),
-                fontSize = 16.sp
-            )
-        } else {
-            UsageCard(title = "Penggunaan Listrik") {
-                LineUsageChart(usageData)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            UsageCard(title = "Penggunaan Perangkat") {
-                BarUsageChart(usageData)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -114,8 +111,8 @@ fun UsageInfoSection() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp) // Tinggi header tetap
-            .background(Color(0xFFBDBDBD))
+            .height(200.dp) // Tinggi header tetap
+            .background(BackgroundColor)
             .padding(horizontal = 20.dp, vertical = 16.dp) // Padding lebih besar
     ) {
         Column(
@@ -173,7 +170,7 @@ fun UsageCard(title: String, content: @Composable () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFD0D0D0))
+            .background(Color(0xFFFFFFFF))
             .padding(16.dp)
     ) {
         Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp)

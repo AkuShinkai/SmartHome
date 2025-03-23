@@ -159,6 +159,7 @@ fun FaceLoginBottomSheet(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(0.8f),
+                shape = RoundedCornerShape(10.dp),
                 enabled = isButtonEnabled && buttonText == "Login dengan Wajah" && !isProcessing
             ) {
                 Text(buttonText)
@@ -169,6 +170,7 @@ fun FaceLoginBottomSheet(
             Button(
                 onClick = { onDismiss() },
                 modifier = Modifier.fillMaxWidth(0.8f),
+                shape = RoundedCornerShape(10.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(Color.Gray)
             ) {
                 Text("Batal", color = Color.White)

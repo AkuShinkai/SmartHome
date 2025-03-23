@@ -71,6 +71,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                 label = { Text("Email") },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Email Icon") },
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     containerColor = Color.White,
                     focusedBorderColor = Color.Blue,
@@ -107,6 +108,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     containerColor = Color.White,
                     focusedBorderColor = Color.Blue,
@@ -133,12 +135,12 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
             ) {
-                Text("Login", fontSize = 16.sp)
+                Text("Login", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
 
             // Tombol Batal
             TextButton(onClick = onDismiss) {
-                Text("Batal", color = Color.Red, fontSize = 16.sp)
+                Text("Batal", color = Color.Red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

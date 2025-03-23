@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
@@ -111,7 +112,7 @@ fun AuthScreen(navController: NavController?) {
                         .weight(1f)
                         .height(60.dp)
                 ) {
-                    Text(text = "Login", color = Color.White, fontSize = 20.sp)
+                    Text(text = "Login", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.width(15.dp))
@@ -140,6 +141,7 @@ fun AuthScreen(navController: NavController?) {
                     text = "Daftar",
                     fontSize = 18.sp,
                     color = PrimaryColor,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable { navController?.navigate(Screen.Register.route) }
                 )
             }

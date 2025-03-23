@@ -85,6 +85,13 @@ import java.util.UUID
 
 @Composable
 fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel()) {
+
+    val PrimaryColor = Color(0xFF2AABD5)
+    val SecondaryColor = Color(0xFF54BCDE)
+    val BackgroundColor = Color(0xFFF3F3F3)
+    val ButtonColor = Color(0xFF1A91C1)
+    val TextColor = Color(0xFF005A80)
+
     val auth = FirebaseAuth.getInstance()
     val context = LocalContext.current
 
@@ -99,6 +106,7 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
 
     val sessionManager = remember { SessionManager(context) }
     val coroutineScope = rememberCoroutineScope()
+    var showConfirmLogoutDialog by remember { mutableStateOf(false) }
 
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
@@ -143,7 +151,7 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))
+        modifier = Modifier.fillMaxSize().background(BackgroundColor)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -161,10 +169,9 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                 Box(contentAlignment = Alignment.BottomEnd) {
                     Box(
                         modifier = Modifier
-                            .size(126.dp) // Ukuran lebih besar dari gambar
+                            .size(130.dp) // Ukuran lebih besar dari gambar
                             .clip(CircleShape)
-                            .background(Color.White) // Border putih untuk pemisah background
-                            .border(2.dp, Color.Gray, CircleShape),
+                            .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         if (!profileImage.isNullOrEmpty()) {
@@ -363,15 +370,34 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                OutlinedButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            sessionManager.logout()
-                            navController?.navigate("auth_screen") {
-                                popUpTo("home_screen") { inclusive = true }
+                if (showConfirmLogoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showConfirmLogoutDialog = false },
+                        title = { Text("Confirm Logout") },
+                        text = { Text("Are you sure you want to log out?") },
+                        confirmButton = {
+                            Button(onClick = {
+                                coroutineScope.launch {
+                                    sessionManager.logout()
+                                    navController?.navigate("auth_screen") {
+                                        popUpTo("home_screen") { inclusive = true }
+                                    }
+                                }
+                                showConfirmLogoutDialog = false
+                            }) {
+                                Text("Yes, Logout")
+                            }
+                        },
+                        dismissButton = {
+                            OutlinedButton(onClick = { showConfirmLogoutDialog = false }) {
+                                Text("Cancel")
                             }
                         }
-                    },
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = { showConfirmLogoutDialog = true },
                     border = BorderStroke(1.dp, Color.Red),
                     shape = RoundedCornerShape(30.dp),
                     modifier = Modifier.fillMaxWidth()

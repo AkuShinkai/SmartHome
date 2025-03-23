@@ -1,5 +1,7 @@
 package com.example.smarthome.ui.screens
 
+import androidx.compose.animation.core.EaseInOutCubic
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,8 +22,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Weekend
@@ -35,15 +40,20 @@ import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,7 +63,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -70,11 +82,22 @@ import com.example.smarthome.data.WeatherResponse
 import com.example.smarthome.security.ApiKey
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import ir.ehsannarmani.compose_charts.LineChart
 import ir.ehsannarmani.compose_charts.PieChart
+import ir.ehsannarmani.compose_charts.models.AnimationMode
+import ir.ehsannarmani.compose_charts.models.DrawStyle
+import ir.ehsannarmani.compose_charts.models.Line
 import ir.ehsannarmani.compose_charts.models.Pie
 
 @Composable
 fun HomeScreen(navController: NavController?) {
+
+    val PrimaryColor = Color(0xFF2AABD5)
+    val SecondaryColor = Color(0xFF54BCDE)
+    val BackgroundColor = Color(0xFFF3F3F3)
+    val ButtonColor = Color(0xFF1A91C1)
+    val TextColor = Color(0xFF005A80)
+
     var selectedTab by remember { mutableStateOf("All Devices") }
     var showEditDialog by remember { mutableStateOf(false) }
     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -115,7 +138,7 @@ fun HomeScreen(navController: NavController?) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(BackgroundColor)
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -156,7 +179,7 @@ fun HomeScreen(navController: NavController?) {
                     modifier = Modifier
                         .padding(end = 12.dp)
                         .clickable { selectedTab = tab },
-                    color = if (selectedTab == tab) MaterialTheme.colorScheme.primary else Color.Gray
+                    color = if (selectedTab == tab) Color.Black else Color.Gray
                 )
             }
         }
@@ -329,6 +352,7 @@ fun EditDeviceDialog(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceCard(
     name: String,
@@ -336,50 +360,48 @@ fun DeviceCard(
     initialState: Boolean = false
 ) {
     var isOn by remember { mutableStateOf(initialState) }
-    var power by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
+    var power by remember { mutableStateOf("10W") }
+    var time by remember { mutableStateOf("02:34") }
+    val sheetState = rememberModalBottomSheetState()
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .wrapContentHeight()
-            .width(168.dp)
-            .background(if (isOn) Color(0xFFBDBDBD) else Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
-            .padding(15.dp)
+            .width(172.dp)
+            .background(Color.White, RoundedCornerShape(15.dp))
+            .padding(horizontal = 15.dp)
+            .padding(top = 15.dp)
     ) {
-        Column {
+        Column{
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Ikon dalam lingkaran putih
+                // Ikon perangkat
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White, shape = CircleShape),
+                        .background(Color(0xFFF3F3F3), shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, contentDescription = name, tint = Color.Black)
                 }
 
-                // Switch untuk ON/OFF
+                // Switch ON/OFF
                 Switch(
                     checked = isOn,
                     onCheckedChange = { state ->
                         isOn = state
-                        if (isOn) {
-                            power = "10W"
-                            time = "02:34"
-                        } else {
-                            power = ""
-                            time = ""
-                        }
+                        power = if (isOn) "10W" else "0W"
+                        time = if (isOn) "02:34" else "00:00"
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = Color.Green,
                         uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color.LightGray
+                        uncheckedTrackColor = Color(0xFFF3F3F3)
                     )
                 )
             }
@@ -390,19 +412,167 @@ fun DeviceCard(
             Text(text = name, fontWeight = FontWeight.Bold)
 
             // Status Perangkat
-            if (isOn) {
-                Text(text = "🟢 ON  $power  ⏳$time", fontSize = 12.sp)
-            } else {
-                Text(text = "⚫ OFF", fontSize = 12.sp)
+            Text(text = if (isOn) "🟢 ON  $power  ⏳$time" else "⚫ OFF", fontSize = 12.sp)
+
+            IconButton(
+                onClick = { showBottomSheet = true },
+                modifier = Modifier
+                    .size(30.dp)  // Mengurangi ukuran tombol agar lebih kecil
+                    .align(Alignment.CenterHorizontally) // Agar tetap di tengah
+            ) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Details",
+                    modifier = Modifier.size(20.dp) // Mengurangi ukuran ikon agar proporsional
+                )
             }
+            Spacer(modifier = Modifier.height(5.dp))
+        }
+    }
+
+    // 🔹 Modal Bottom Sheet untuk Detail Perangkat
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState
+        ) {
+            DeviceDetails(name, isOn, power, time, onToggle = {
+                isOn = !isOn
+                power = if (isOn) "10W" else "0W"
+                time = if (isOn) "02:34" else "00:00"
+            })
         }
     }
 }
 
+@Composable
+fun DeviceDetails(
+    name: String,
+    isOn: Boolean,
+    power: String,
+    time: String,
+    onToggle: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Detail $name",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // Informasi perangkat dengan ikon
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White, shape = RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            InfoRow(icon = Icons.Default.Bolt, label = "Daya", value = power)
+            InfoRow(icon = Icons.Default.AccessTime, label = "Waktu", value = time)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Switch ON/OFF dengan Status
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Power,
+                    contentDescription = "Power",
+                    tint = if (isOn) Color.Green else Color.Red,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Status: ${if (isOn) "ON" else "OFF"}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Switch(
+                    checked = isOn,
+                    onCheckedChange = { onToggle() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color.Green,
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color(0xFFF3F3F3)
+                    )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Grafik Penggunaan
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .shadow(4.dp, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Usage Graph", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                LineChart(
+                    modifier = Modifier.padding(horizontal = 22.dp),
+                    data = remember {
+                        listOf(
+                            Line(
+                                label = "Windows",
+                                values = listOf(28.0, 41.0, 5.0, 10.0, 35.0),
+                                color = SolidColor(Color(0xFF23af92)),
+                                firstGradientFillColor = Color(0xFF2BC0A1).copy(alpha = .5f),
+                                secondGradientFillColor = Color.Transparent,
+                                strokeAnimationSpec = tween(2000, easing = EaseInOutCubic),
+                                gradientAnimationDelay = 1000,
+                                drawStyle = DrawStyle.Stroke(width = 2.dp),
+                            )
+                        )
+                    },
+                    animationMode = AnimationMode.Together(delayBuilder = {
+                        it * 500L
+                    }),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = Color(0xFF23af92),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = "$label: ", fontWeight = FontWeight.Bold)
+        Text(text = value)
+    }
+}
+
+
 fun getAirQualityIndex(weather: WeatherResponse?): Int {
     return weather?.main?.humidity?.div(10) ?: 50 // Contoh perhitungan sederhana atau default AQI
 }
-
 
 @Composable
 fun WeatherCard(
@@ -553,12 +723,14 @@ fun DeviceUsageChart(navController: NavController?, onNavigate: (String) -> Unit
     Card(
         modifier = Modifier
             .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF))
     ) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .background(Color.White),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
