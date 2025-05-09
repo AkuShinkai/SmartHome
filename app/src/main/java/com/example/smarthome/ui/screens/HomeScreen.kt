@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Power
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,6 +55,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -100,6 +103,9 @@ fun HomeScreen(navController: NavController?) {
 
     var selectedTab by remember { mutableStateOf("All Devices") }
     var showEditDialog by remember { mutableStateOf(false) }
+
+    var showHistoryDialog by remember { mutableStateOf(false) }
+
     val userId = FirebaseAuth.getInstance().currentUser?.uid
     var userName by remember { mutableStateOf<String?>(null) }
 
@@ -143,8 +149,44 @@ fun HomeScreen(navController: NavController?) {
             .verticalScroll(rememberScrollState())
     ) {
 
-        Text(text = "Home", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Home",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(onClick = { showHistoryDialog = true },
+                modifier = Modifier.padding(top = 5.dp)) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "History",
+                    tint = Color.Gray,
+                    modifier = Modifier
+                        .size(32.dp)
+                )
+            }
+        }
+
+        if (showHistoryDialog) {
+            AlertDialog(
+                onDismissRequest = { showHistoryDialog = false },
+                title = { Text("Riwayat Penggunaan") },
+                text = { Text("Ini adalah konten riwayat penggunaan...") },
+                confirmButton = {
+                    TextButton(onClick = { showHistoryDialog = false }) {
+                        Text("Tutup")
+                    }
+                }
+            )
+        }
+
         if (userName == null) {
             CircularProgressIndicator()
         } else {

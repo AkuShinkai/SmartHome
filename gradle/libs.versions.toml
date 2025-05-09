@@ -33,6 +33,7 @@ cameraLifecycle = "1.4.1"
 retrofit = "2.9.0"
 runtime = "1.5.4"
 securityCrypto = "1.1.0-alpha06"
+tasksVision = "1.0.0"
 ui = "1.5.4"
 coreKtxVersion = "1.15.0"
 constraintlayout = "2.2.0"
@@ -86,6 +87,7 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database",
 opencv-android = { module = "org.opencv:opencv-android", version.ref = "opencvAndroid" }
 org-eclipse-paho-client-mqttv3 = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "orgEclipsePahoClientMqttv3" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
+tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "tasksVision" }
 ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
 ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
