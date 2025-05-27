@@ -59,6 +59,10 @@ fun FaceLoginBottomSheet(
     var isProcessing by remember { mutableStateOf(false) }
     var latestBoundingBox by remember { mutableStateOf<android.graphics.Rect?>(null) }
 
+    var targetBlinkCount by remember { mutableStateOf((1..5).random()) }
+    var currentBlinkCount by remember { mutableStateOf(0) }
+    var prevLeftEyeOpen by remember { mutableStateOf(1.0f) }
+
     var buttonText by remember { mutableStateOf("Login dengan Wajah") }
     var isButtonEnabled by remember { mutableStateOf(true) }
 
@@ -78,12 +82,25 @@ fun FaceLoginBottomSheet(
 
                 if (faceArea in minFaceSize..maxFaceSize) {
                     faceDetected = true
-                    latestFaceBitmap =
-                        bitmap.config?.let { bitmap.copy(it, true) } // Simpan copy untuk diproses
-                    bitmap.recycle() // Bebaskan yang asli
+                    latestFaceBitmap = bitmap.config?.let { bitmap.copy(it, true) }
+                    bitmap.recycle()
                     latestBoundingBox = largestFace.boundingBox
-                    buttonText = "Login dengan Wajah"
-                    Log.d("FaceRecognition", "Wajah valid dengan bounding box: ${largestFace.boundingBox}")
+
+                    val leftEyeOpen = largestFace.leftEyeOpenProbability ?: -1f
+                    Log.d("Liveness", "Probabilitas mata kiri terbuka: $leftEyeOpen")
+
+                    // Deteksi kedipan saat transisi dari terbuka ke tertutup
+                    if (leftEyeOpen < 0.2f && prevLeftEyeOpen > 0.8f) {
+                        currentBlinkCount++
+                        Log.d("Liveness", "Kedipan ke-$currentBlinkCount terdeteksi!")
+                    }
+                    prevLeftEyeOpen = leftEyeOpen
+
+                    val blinkGoalReached = currentBlinkCount >= targetBlinkCount
+                    Log.d("Liveness", "Progress kedipan: $currentBlinkCount dari $targetBlinkCount")
+
+                    buttonText = if (blinkGoalReached) "Login dengan Wajah"
+                    else "Kedipkan mata ${targetBlinkCount - currentBlinkCount}x lagi"
                 } else {
                     faceDetected = false
                     latestBoundingBox = null
@@ -125,7 +142,7 @@ fun FaceLoginBottomSheet(
             val coroutineScope = rememberCoroutineScope()
             Button(
                 onClick = {
-                    if (faceDetected && latestFaceBitmap != null && isButtonEnabled) {
+                    if (faceDetected && latestFaceBitmap != null && isButtonEnabled && currentBlinkCount >= targetBlinkCount) {
                         isProcessing = true
                         isButtonEnabled = false
                         buttonText = "Memproses..."
@@ -184,7 +201,7 @@ fun authenticateWithFace(
     context: Context,
     navController: NavController?,
     sessionManager: SessionManager,
-    coroutineScope: CoroutineScope, // Tambahkan parameter ini
+    coroutineScope: CoroutineScope,
     onComplete: () -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()

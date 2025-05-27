@@ -182,12 +182,20 @@ fun registerUser(
                     }
                     .addOnFailureListener { e ->
                         Log.e("RegisterUser", "Gagal menyimpan data ke Firestore", e)
-                        Toast.makeText(context, "Gagal menyimpan data: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Gagal menyimpan data: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     .addOnCompleteListener { onComplete() }
             } else {
                 Log.e("RegisterUser", "Registrasi gagal", task.exception)
-                Toast.makeText(context, "Registrasi gagal: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Registrasi gagal: ${task.exception?.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
                 onComplete()
             }
         }

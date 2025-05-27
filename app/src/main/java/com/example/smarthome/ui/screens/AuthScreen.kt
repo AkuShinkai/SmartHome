@@ -73,7 +73,7 @@ fun AuthScreen(navController: NavController?) {
                 .fillMaxWidth()
                 .weight(1.4f)
                 .background(brush = Brush.linearGradient(
-                    colors = listOf(Color(0xff7e02d6), Color( 0xFF2AABD5), Color(0xFF54BCDE), Color( 0xFF2AABD5),Color(0xff7e02d6))
+                    colors = listOf(Color( 0xFF2AABD5), Color(0xFF54BCDE), Color( 0xFF2AABD5))
                 ), shape = RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp)),
             contentAlignment = Alignment.Center
         ) {
@@ -85,7 +85,7 @@ fun AuthScreen(navController: NavController?) {
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    painter = painterResource(id = R.drawable.logo_w_text),
                     contentDescription = "Logo"
                 )
             }
