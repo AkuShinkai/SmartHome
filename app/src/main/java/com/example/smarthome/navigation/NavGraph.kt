@@ -5,9 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.smarthome.ui.screens.AddFaceScreen
 import com.example.smarthome.ui.screens.AuthScreen
 import com.example.smarthome.ui.screens.FaceRegisterScreen
 import com.example.smarthome.ui.screens.MainScreen
+import com.example.smarthome.ui.screens.MeScreen
 import com.example.smarthome.ui.screens.RegisterScreen
 
 // Definisi route untuk setiap screen
@@ -15,6 +17,7 @@ sealed class Screen(val route: String) {
     object Auth : Screen("auth_screen")
     object Home : Screen("home_screen")
     object Register : Screen("register_screen")
+    object Me : Screen("me_screen")
 }
 
 @Composable
@@ -37,6 +40,12 @@ fun NavGraph(navController: NavHostController, startDestination: String) {
             val email = backStackEntry.arguments?.getString("email") ?: ""
             val password = backStackEntry.arguments?.getString("password") ?: ""
             FaceRegisterScreen(navController, name, email, password)
+        }
+        composable(Screen.Me.route) {
+            MeScreen(navController)
+        }
+        composable("add_face_screen") {
+            AddFaceScreen(navController)
         }
     }
 }

@@ -1,36 +1,49 @@
 package com.example.smarthome.ui.screens
 
-import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.tween
+import android.app.TimePickerDialog
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoorFront
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EnergySavingsLeaf
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Power
-import androidx.compose.material.icons.filled.Weekend
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Grain
@@ -44,13 +57,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -61,6 +75,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,37 +86,52 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.smarthome.R
 import com.example.smarthome.api.WeatherRepository
+import com.example.smarthome.data.MqttManager
+import com.example.smarthome.data.UsageData
 import com.example.smarthome.data.WeatherResponse
+import com.example.smarthome.data.fetchAllUsageData
 import com.example.smarthome.security.ApiKey
+import com.example.smarthome.ui.viewmodel.Device
+import com.example.smarthome.ui.viewmodel.DeviceSchedule
+import com.example.smarthome.ui.viewmodel.DeviceSensorData
+import com.example.smarthome.ui.viewmodel.DeviceViewModel
+import com.example.smarthome.ui.viewmodel.observeStateChange
+import com.google.accompanist.flowlayout.FlowRow
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
 import ir.ehsannarmani.compose_charts.LineChart
 import ir.ehsannarmani.compose_charts.PieChart
 import ir.ehsannarmani.compose_charts.models.AnimationMode
 import ir.ehsannarmani.compose_charts.models.DrawStyle
 import ir.ehsannarmani.compose_charts.models.Line
 import ir.ehsannarmani.compose_charts.models.Pie
+import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 
 @Composable
 fun HomeScreen(navController: NavController?) {
 
-    val PrimaryColor = Color(0xFF2AABD5)
-    val SecondaryColor = Color(0xFF54BCDE)
     val BackgroundColor = Color(0xFFF3F3F3)
-    val ButtonColor = Color(0xFF1A91C1)
-    val TextColor = Color(0xFF005A80)
 
-    var selectedTab by remember { mutableStateOf("All Devices") }
+    var selectedTab by remember { mutableStateOf("Semua Alat") }
     var showEditDialog by remember { mutableStateOf(false) }
 
     var showHistoryDialog by remember { mutableStateOf(false) }
@@ -112,15 +142,43 @@ fun HomeScreen(navController: NavController?) {
     var weather by remember { mutableStateOf<WeatherResponse?>(null) }
     val repository = WeatherRepository()
 
-    // 🔹 Data Perangkat & Ruangan
-    var devices by remember {
-        mutableStateOf(
-            listOf(
-                Device("Smart Lamp", Icons.Default.Lightbulb, "Kamar Tidur"),
-                Device("Smart Socket", Icons.Default.Power, "Ruang Tamu")
-            )
+    var devices by remember { mutableStateOf<List<Device>>(emptyList()) }
+    var availableRooms by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val dbRef = FirebaseDatabase.getInstance().reference
+
+        val defaultDevices = listOf(
+            Triple("smart_lamp", "Smart Lamp", Icons.Default.Lightbulb),
+            Triple("socket2_1", "Socket 2 Lubang 1", Icons.Default.Power),
+            Triple("socket2_2", "Socket 2 Lubang 2", Icons.Default.Power),
+            Triple("smart_door", "Smart Door", Icons.Default.DoorFront)
         )
+
+        val fetchedDevices = mutableListOf<Device>()
+        val roomsSet = mutableSetOf<String>()
+
+        defaultDevices.forEach { (id, name, icon) ->
+            dbRef.child(id).child("room").get().addOnSuccessListener { snapshot ->
+                val room = snapshot.getValue(String::class.java) ?: ""
+                fetchedDevices.add(Device(id, name, icon, room))
+                roomsSet.add(room)
+
+                // Update state setelah semua selesai
+                if (fetchedDevices.size == defaultDevices.size) {
+                    devices = fetchedDevices
+                    availableRooms = roomsSet.toList()
+                }
+            }
+        }
     }
+
+    val viewModel: DeviceViewModel = viewModel()
+    val switch1Status = viewModel.switch1Status
+    val switch2Status = viewModel.switch2Status
+    val doorstatus = viewModel.switch_door
+    val lampstatus = viewModel.switch_lamp
+    val powerValue = viewModel.powerValue
 
     LaunchedEffect(key1 = true) {
         weather = repository.getWeather("Madiun", ApiKey.WEATHER_API_KEY)
@@ -212,16 +270,22 @@ fun HomeScreen(navController: NavController?) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 🔹 Filter Tab
-        val tabs = listOf("All Devices", "Kamar Tidur", "Ruang Tamu")
-        Row {
-            tabs.forEach { tab ->
+        // 🔹 Filter Tab (Sederhana, Bold Saat Aktif)
+        val tabs = listOf("Semua Alat") + availableRooms
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(tabs) { tab ->
                 Text(
                     text = tab,
                     modifier = Modifier
-                        .padding(end = 12.dp)
-                        .clickable { selectedTab = tab },
-                    color = if (selectedTab == tab) Color.Black else Color.Gray
+                        .clickable { selectedTab = tab }
+                        .padding(vertical = 8.dp, horizontal = 3.dp),
+                    color = if (selectedTab == tab) MaterialTheme.colorScheme.primary else Color.Gray,
+                    fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal
                 )
             }
         }
@@ -229,14 +293,79 @@ fun HomeScreen(navController: NavController?) {
         Spacer(modifier = Modifier.height(12.dp))
 
         // 🔹 Filter & Tampilkan Perangkat Berdasarkan Ruangan
-        val filteredDevices = if (selectedTab == "All Devices") devices else devices.filter { it.room == selectedTab }
+        val filteredDevices = if (selectedTab == "Semua Alat") devices else devices.filter { it.room == selectedTab }
 
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            mainAxisSpacing = 12.dp,
+            crossAxisSpacing = 12.dp
         ) {
             filteredDevices.forEach { device ->
-                DeviceCard(device.name, device.icon)
+                val context = LocalContext.current
+
+                val isOn = when (device.id) {
+                    "socket2_1" -> switch1Status == "ON"
+                    "socket2_2" -> switch2Status == "ON"
+                    "smart_lamp" -> lampstatus == "ON"
+                    "smart_door" -> doorstatus == "ON"
+                    else -> false
+                }
+
+                DeviceCard(
+                    deviceId = device.id,
+                    name = device.name,
+                    icon = device.icon,
+                    isOn = isOn,
+                    power = if (isOn) {
+                        when (device.id) {
+                            "socket2_1" -> "${viewModel.powerValue}W"
+                            "socket2_2" -> "${viewModel.powerValue}W"
+                            "smart_lamp" -> "${viewModel.powerLamp}W"
+                            "smart_door" -> "${viewModel.powerDoor}W"
+                            else -> "0W"
+                        }
+                    } else "0W",
+                    onToggle = { newState ->
+                        val (message, expectedPath, expectedState) = when (device.id) {
+                            "socket2_1" -> Triple(
+                                if (newState) "SWITCH1_ON" else "SWITCH1_OFF",
+                                "socket_2_lubang/switch/status1",
+                                if (newState) "ON" else "OFF"
+                            )
+                            "socket2_2" -> Triple(
+                                if (newState) "SWITCH2_ON" else "SWITCH2_OFF",
+                                "socket_2_lubang/switch/status2",
+                                if (newState) "ON" else "OFF"
+                            )
+                            "smart_lamp" -> Triple(
+                                if (newState) "LAMP_ON" else "LAMP_OFF",
+                                "smart_lamp/switch/status1",
+                                if (newState) "ON" else "OFF"
+                            )
+                            "smart_door" -> Triple(
+                                if (newState) "DOOR_ON" else "DOOR_OFF",
+                                "smart_door/switch/status1",
+                                if (newState) "ON" else "OFF"
+                            )
+                            else -> Triple("UNKNOWN", "", "")
+                        }
+
+                        // Kirim perintah
+                        MqttManager.publish("home/switch/command", message)
+
+                        // 🔁 Cek apakah status berubah di RTDB dalam 5 detik
+                        observeStateChange(expectedPath, expectedState, 5000L) { success ->
+                            if (!success) {
+                                Toast.makeText(
+                                    context,
+                                    "❌ Gagal mengontrol ${device.name}.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                )
+
             }
         }
 
@@ -281,111 +410,118 @@ fun HomeScreen(navController: NavController?) {
     }
 }
 
-// 🔹 Model Data Perangkat
-data class Device(val name: String, val icon: ImageVector, var room: String)
-
-// 🔹 Dialog Edit Perangkat
 @Composable
 fun EditDeviceDialog(
     devices: List<Device>,
     onSave: (List<Device>) -> Unit,
-    onCancel: () -> Unit // Tambahkan aksi untuk cancel
+    onCancel: () -> Unit
 ) {
-    var updatedDevices by remember { mutableStateOf(devices) }
-    val rooms = listOf("Kamar Tidur", "Ruang Tamu")
+    val rooms = listOf("Kamar Tidur", "Ruang Tamu", "Dapur", "Ruang Makan", "Teras")
 
-    Dialog(onDismissRequest = { onCancel() }) { // Gunakan onCancel saat dialog ditutup
+    val distinctDevices = devices.distinctBy {
+        if (it.id == "socket2_1" || it.id == "socket2_2") "socket_2_lubang" else it.id
+    }.map {
+        if (it.id == "socket2_1" || it.id == "socket2_2") {
+            it.copy(id = "socket_2_lubang", name = "Socket 2 Lubang")
+        } else it
+    }
+
+    var updatedDevices by remember { mutableStateOf(distinctDevices) }
+
+    Dialog(onDismissRequest = { onCancel() }) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 4.dp,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+                .heightIn(min = 100.dp, max = 500.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
                 Text(
-                    text = "Edit Device Rooms",
+                    text = "Edit Tempat Alat",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                updatedDevices.forEachIndexed { index, device ->
-                    var selectedRoom by remember { mutableStateOf(device.room) }
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    itemsIndexed(updatedDevices) { index, device ->
+                        var expanded by remember { mutableStateOf(false) }
+                        var selectedRoom by remember { mutableStateOf(device.room) }
 
-                    Text(
-                        text = device.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
-                    )
-
-                    rooms.forEach { room ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedRoom = room
-                                    updatedDevices = updatedDevices.toMutableList().apply {
-                                        this[index] = device.copy(room = selectedRoom)
-                                    }
-                                }
-                                .padding(vertical = 8.dp, horizontal = 12.dp)
-                                .background(
-                                    if (selectedRoom == room) Color(0xFFDDEEFF)
-                                    else Color.Transparent,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
-                            RadioButton(
-                                selected = selectedRoom == room,
-                                onClick = {
-                                    selectedRoom = room
-                                    updatedDevices = updatedDevices.toMutableList().apply {
-                                        this[index] = device.copy(room = selectedRoom)
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(device.name, fontWeight = FontWeight.SemiBold)
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                OutlinedButton(onClick = { expanded = true }) {
+                                    Text(selectedRoom)
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+
+                                DropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    rooms.forEach { room ->
+                                        DropdownMenuItem(
+                                            text = { Text(room) },
+                                            onClick = {
+                                                selectedRoom = room
+                                                expanded = false
+                                                updatedDevices = updatedDevices.toMutableList().apply {
+                                                    this[index] = device.copy(room = selectedRoom)
+                                                }
+                                            }
+                                        )
                                     }
                                 }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                imageVector = if (room == "Kamar Tidur") Icons.Default.Bed else Icons.Default.Weekend,
-                                contentDescription = room,
-                                tint = if (selectedRoom == room) MaterialTheme.colorScheme.primary else Color.Gray
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(room, fontSize = 16.sp)
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Tombol Cancel & Save
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp) // Memberi jarak yang rapi antar tombol
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { onCancel() },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Cancel", fontWeight = FontWeight.Bold)
+                    OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                        Text("Batal")
                     }
-
                     Button(
-                        onClick = { onSave(updatedDevices) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        onClick = {
+                            val dbRef = FirebaseDatabase.getInstance().reference
+                            updatedDevices.forEach { device ->
+                                when (device.id) {
+                                    "socket_2_lubang" -> {
+                                        dbRef.child("socket2_1").child("room").setValue(device.room)
+                                        dbRef.child("socket2_2").child("room").setValue(device.room)
+                                    }
+                                    else -> {
+                                        dbRef.child(device.id).child("room").setValue(device.room)
+                                    }
+                                }
+                            }
+                            onSave(updatedDevices)
+                        },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Simpan")
                     }
                 }
             }
@@ -393,17 +529,16 @@ fun EditDeviceDialog(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceCard(
+    deviceId: String,
     name: String,
     icon: ImageVector,
-    initialState: Boolean = false
+    isOn: Boolean,
+    power: String,
+    onToggle: (Boolean) -> Unit
 ) {
-    var isOn by remember { mutableStateOf(initialState) }
-    var power by remember { mutableStateOf("10W") }
-    var time by remember { mutableStateOf("02:34") }
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -415,13 +550,12 @@ fun DeviceCard(
             .padding(horizontal = 15.dp)
             .padding(top = 15.dp)
     ) {
-        Column{
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Ikon perangkat
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -431,13 +565,10 @@ fun DeviceCard(
                     Icon(icon, contentDescription = name, tint = Color.Black)
                 }
 
-                // Switch ON/OFF
                 Switch(
                     checked = isOn,
                     onCheckedChange = { state ->
-                        isOn = state
-                        power = if (isOn) "10W" else "0W"
-                        time = if (isOn) "02:34" else "00:00"
+                        onToggle(state)
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
@@ -449,168 +580,421 @@ fun DeviceCard(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Nama Perangkat
-            Text(text = name, fontWeight = FontWeight.Bold)
-
-            // Status Perangkat
-            Text(text = if (isOn) "🟢 ON  $power  ⏳$time" else "⚫ OFF", fontSize = 12.sp)
+            Text(text = name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(text = if (isOn) "🟢 ON ⚡$power" else "⚫ OFF", fontSize = 11.sp)
 
             IconButton(
                 onClick = { showBottomSheet = true },
                 modifier = Modifier
-                    .size(30.dp)  // Mengurangi ukuran tombol agar lebih kecil
-                    .align(Alignment.CenterHorizontally) // Agar tetap di tengah
+                    .size(30.dp)
+                    .align(Alignment.CenterHorizontally)
             ) {
                 Icon(
                     Icons.Default.KeyboardArrowDown,
                     contentDescription = "Details",
-                    modifier = Modifier.size(20.dp) // Mengurangi ukuran ikon agar proporsional
+                    modifier = Modifier.size(20.dp)
                 )
             }
             Spacer(modifier = Modifier.height(5.dp))
         }
     }
 
-    // 🔹 Modal Bottom Sheet untuk Detail Perangkat
     if (showBottomSheet) {
+        val realDeviceId = mapUiIdToDbId(deviceId)
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState
         ) {
-            DeviceDetails(name, isOn, power, time, onToggle = {
-                isOn = !isOn
-                power = if (isOn) "10W" else "0W"
-                time = if (isOn) "02:34" else "00:00"
-            })
+            DeviceDetails(
+                deviceId = realDeviceId,
+                name = name,
+                isOn = isOn,
+                onToggle = {
+                    onToggle(!isOn)
+                }
+            )
         }
     }
 }
 
 @Composable
 fun DeviceDetails(
+    deviceId: String,
     name: String,
     isOn: Boolean,
-    power: String,
-    time: String,
     onToggle: () -> Unit
 ) {
+    val scrollState = rememberScrollState()
+
+    // STATE untuk sensor data
+    var sensorData by remember { mutableStateOf(DeviceSensorData()) }
+
+    // Baca data dari Firebase Realtime Database
+    LaunchedEffect(deviceId, isOn) {
+        val dbRef = FirebaseDatabase.getInstance().getReference("$deviceId/sensors")
+
+        if (!isOn) {
+            // Jika perangkat OFF, kosongkan data sensor
+            sensorData = DeviceSensorData()
+        } else {
+            // Kalau ON, pasang listener untuk baca realtime
+            dbRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    sensorData = DeviceSensorData(
+                        power = snapshot.child("power").getValue(Double::class.java) ?: 0.0,
+                        current = snapshot.child("current").getValue(Double::class.java) ?: 0.0,
+                        voltage = snapshot.child("voltage").getValue(Double::class.java) ?: 0.0,
+                        energy = snapshot.child("energy").getValue(Double::class.java) ?: 0.0
+                    )
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("DeviceDetails", "Database error: ${error.message}")
+                }
+            })
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-        Text(
-            text = "Detail $name",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        // chartData tetap berdasarkan power (daily)
+        val usageData by produceState(initialValue = emptyList<UsageData>(), deviceId) {
+            val allData = fetchAllUsageData()
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startOfDay = calendar.timeInMillis
 
-        // Informasi perangkat dengan ikon
+            val filtered = allData.filter {
+                it.device == deviceId && it.timestamp.toDate().time >= startOfDay
+            }
+            value = filtered
+        }
+
+        val chartData = usageData.map { it.power.toDouble() }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White, shape = RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
-            InfoRow(icon = Icons.Default.Bolt, label = "Daya", value = power)
-            InfoRow(icon = Icons.Default.AccessTime, label = "Waktu", value = time)
+            Text(
+                text = "Detail $name",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Switch ON/OFF dengan Status
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Power,
-                    contentDescription = "Power",
-                    tint = if (isOn) Color.Green else Color.Red,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Status: ${if (isOn) "ON" else "OFF"}",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Switch(
-                    checked = isOn,
-                    onCheckedChange = { onToggle() },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color.Green,
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color(0xFFF3F3F3)
-                    )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Grafik Penggunaan
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .shadow(4.dp, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
+            // Kartu sensor detail
             Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, shape = RoundedCornerShape(16.dp))
+                    .padding(20.dp)
             ) {
-                Text(text = "Usage Graph", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                LineChart(
-                    modifier = Modifier.padding(horizontal = 22.dp),
-                    data = remember {
-                        listOf(
+                // Baris 1: Power & Voltage
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    InfoRow(
+                        icon = Icons.Default.Bolt,
+                        label = "Daya",
+                        value = "${sensorData.power} W",
+                        modifier = Modifier.weight(1f)
+                    )
+                    InfoRow(
+                        icon = Icons.Default.FlashOn,
+                        label = "Tegangan",
+                        value = "${sensorData.voltage} V",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Baris 2: Current & Energy
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    InfoRow(
+                        icon = Icons.Default.BatteryChargingFull,
+                        label = "Arus",
+                        value = "${sensorData.current} A",
+                        modifier = Modifier.weight(1f)
+                    )
+                    InfoRow(
+                        icon = Icons.Default.EnergySavingsLeaf,
+                        label = "Energi",
+                        value = "${sensorData.energy} Wh",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Power,
+                        contentDescription = "Power",
+                        tint = if (isOn) Color(0xFF4CAF50) else Color(0xFFF44336),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Status: ${if (isOn) "ON" else "OFF"}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isOn) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = isOn,
+                        onCheckedChange = { onToggle() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF4CAF50),
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = Color(0xFFE0E0E0)
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (deviceId == "smart_lamp") {
+                DeviceScheduleSection(deviceId = deviceId)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .shadow(4.dp, RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "Grafik Penggunaan", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LineChart(
+                        modifier = Modifier.padding(horizontal = 22.dp),
+                        data = listOf(
                             Line(
-                                label = "Windows",
-                                values = listOf(28.0, 41.0, 5.0, 10.0, 35.0),
+                                label = name,
+                                values = chartData,
                                 color = SolidColor(Color(0xFF23af92)),
                                 firstGradientFillColor = Color(0xFF2BC0A1).copy(alpha = .5f),
                                 secondGradientFillColor = Color.Transparent,
-                                strokeAnimationSpec = tween(2000, easing = EaseInOutCubic),
-                                gradientAnimationDelay = 1000,
                                 drawStyle = DrawStyle.Stroke(width = 2.dp),
                             )
-                        )
-                    },
-                    animationMode = AnimationMode.Together(delayBuilder = {
-                        it * 500L
-                    }),
-                )
+                        ),
+                        animationMode = AnimationMode.Together { it * 300L }
+                    )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 
 @Composable
-fun InfoRow(icon: ImageVector, label: String, value: String) {
+fun InfoRow(icon: ImageVector, label: String, value: String, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 4.dp)
+        modifier = modifier
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = Color(0xFF23af92),
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(icon, contentDescription = label, tint = Color.Gray, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = "$label: ", fontWeight = FontWeight.Bold)
-        Text(text = value)
+        Column {
+            Text(text = label, fontSize = 14.sp, color = Color.Gray)
+            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
+@Composable
+fun DeviceScheduleSection(deviceId: String) {
+    val firestore = Firebase.firestore
+    var scheduleList by remember { mutableStateOf(listOf<DeviceSchedule>()) }
+
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
+    var selectedHour by remember { mutableStateOf(calendar.get(Calendar.HOUR_OF_DAY)) }
+    var selectedMinute by remember { mutableStateOf(calendar.get(Calendar.MINUTE)) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    var selectedAction by remember { mutableStateOf("ON") }
+    val actionOptions = listOf("ON", "OFF")
+    var expanded by remember { mutableStateOf(false) }
+
+    // 🔁 Load data dari Firestore
+    LaunchedEffect(deviceId) {
+        val doc = firestore.collection("deviceSchedules").document(deviceId).get().await()
+        val list = doc.get("schedules") as? List<Map<String, Any>> ?: emptyList()
+        scheduleList = list.map {
+            DeviceSchedule(
+                time = it["time"] as? String ?: "",
+                action = it["action"] as? String ?: ""
+            )
+        }
+    }
+
+    // 🔁 Simpan data ke Firestore
+    fun saveToFirestore(list: List<DeviceSchedule>) {
+        val data = list.map {
+            mapOf(
+                "time" to it.time,
+                "action" to it.action
+            )
+        }
+        firestore.collection("deviceSchedules").document(deviceId)
+            .set(mapOf("schedules" to data))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, shape = RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Text("Penjadwalan", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ✅ Tampilkan jadwal
+        scheduleList.forEachIndexed { index, schedule ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(2.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = "Jadwal",
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = schedule.time,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Aksi: ${schedule.action}",
+                            fontSize = 13.sp,
+                            color = Color.Gray
+                        )
+                    }
+
+                    IconButton(onClick = {
+                        val newList = scheduleList.toMutableList()
+                        newList.removeAt(index)
+                        scheduleList = newList
+                        saveToFirestore(newList)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Hapus",
+                            tint = Color.Red
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 🕒 + ⚡️ Tambah waktu & aksi
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("%02d:%02d".format(selectedHour, selectedMinute), fontSize = 16.sp)
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Box(modifier = Modifier
+                .weight(1f)
+                .wrapContentSize(Alignment.TopStart)) {
+                OutlinedButton(onClick = { expanded = true }) {
+                    Text(selectedAction)
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    actionOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                selectedAction = option
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Button(onClick = {
+                val newSchedule = DeviceSchedule(
+                    time = "%02d:%02d".format(selectedHour, selectedMinute),
+                    action = selectedAction
+                )
+                val newList = scheduleList + newSchedule
+                scheduleList = newList
+                saveToFirestore(newList)
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Add")
+            }
+        }
+    }
+
+    // Time picker dialog
+    if (showTimePicker) {
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                selectedHour = hour
+                selectedMinute = minute
+                showTimePicker = false
+            },
+            selectedHour, selectedMinute, true
+        ).show()
+    }
+}
 
 fun getAirQualityIndex(weather: WeatherResponse?): Int {
     return weather?.main?.humidity?.div(10) ?: 50 // Contoh perhitungan sederhana atau default AQI
@@ -750,14 +1134,56 @@ fun DeviceUsageChart(navController: NavController?, onNavigate: (String) -> Unit
     var selectedPieIndex by remember { mutableStateOf<Int?>(null) }
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipText by remember { mutableStateOf("") }
-    var data by remember {
-        mutableStateOf(
-            listOf(
-                Pie(label = "Android", data = 20.0, color = Color.Red, selectedColor = Color.Green),
-                Pie(label = "Windows", data = 45.0, color = Color.Cyan, selectedColor = Color.Blue),
-                Pie(label = "Linux", data = 35.0, color = Color.Gray, selectedColor = Color.Yellow),
+    val deviceLabelMap = mapOf(
+        "socket_2_lubang" to "Socket 2",
+        "smart_lamp" to "Lampu",
+        "smart_door" to "Pintu"
+    )
+
+    fun colorForDevice(device: String): Color {
+        return when (device) {
+            "socket_2_lubang" -> Color(0xFFE53935)
+            "smart_lamp" -> Color(0xFF3F51B5)
+            "smart_door" -> Color(0xFF43A047)
+            else -> Color.Gray
+        }
+    }
+
+    var usageData by remember { mutableStateOf<List<UsageData>>(emptyList()) }
+    var data by remember { mutableStateOf<List<Pie>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val allUsage = fetchAllUsageData() // Fungsi Firestore milikmu
+        // Filter hanya data hari ini
+        val now = System.currentTimeMillis()
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = calendar.timeInMillis
+
+        val dailyUsage = allUsage.filter {
+            it.timestamp.toDate().time >= startOfDay
+        }
+        usageData = dailyUsage
+
+        // Group by device
+        val grouped = dailyUsage.groupBy { it.device }
+        val pieData = grouped.map { (device, entries) ->
+            val label = deviceLabelMap[device] ?: device
+            val total = entries.sumOf { it.power.toDouble() }
+            Pie(
+                label = label,
+                data = total,
+                color = colorForDevice(device),
+                selectedColor = colorForDevice(device).copy(alpha = 0.6f)
             )
-        )
+        }
+
+        data = pieData
     }
 
     val total = data.sumOf { it.data }
@@ -797,7 +1223,8 @@ fun DeviceUsageChart(navController: NavController?, onNavigate: (String) -> Unit
                             selectedPieIndex = null
                         } else {
                             selectedPieIndex = pieIndex
-                            tooltipText = "${clickedPie.label}: ${clickedPie.data}%"
+                            val percentage = if (total != 0.0) (clickedPie.data / total * 100).toInt() else 0
+                            tooltipText = "${clickedPie.label}: $percentage%"
                             showTooltip = true
                         }
 
@@ -849,5 +1276,12 @@ fun DeviceUsageChart(navController: NavController?, onNavigate: (String) -> Unit
                 }
             }
         }
+    }
+}
+
+fun mapUiIdToDbId(uiId: String): String {
+    return when (uiId) {
+        "socket2_1", "socket2_2" -> "socket_2_lubang"
+        else -> uiId
     }
 }

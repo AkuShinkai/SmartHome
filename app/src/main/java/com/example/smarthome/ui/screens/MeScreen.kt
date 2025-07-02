@@ -30,9 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
@@ -40,13 +43,20 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -64,10 +74,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -86,11 +98,7 @@ import java.util.UUID
 @Composable
 fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel()) {
 
-    val PrimaryColor = Color(0xFF2AABD5)
-    val SecondaryColor = Color(0xFF54BCDE)
     val BackgroundColor = Color(0xFFF3F3F3)
-    val ButtonColor = Color(0xFF1A91C1)
-    val TextColor = Color(0xFF005A80)
 
     val auth = FirebaseAuth.getInstance()
     val context = LocalContext.current
@@ -112,11 +120,23 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
     var newImageUri by remember { mutableStateOf<Uri?>(null) }
     val profileImage by meViewModel.profileImage.collectAsState()
+
+    val faceLabels by meViewModel.faceLabels.collectAsState()
+
+    var pendingAddedFaces by remember { mutableStateOf(mutableMapOf<String, Any>()) }
+    var pendingEditedFaces by remember { mutableStateOf(mutableMapOf<String, Pair<String, Any>>()) }
+    var pendingDeletedFaces by remember { mutableStateOf(mutableSetOf<String>()) }
+
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             newImageUri = it
             showConfirmDialog = true
         }
+    }
+
+    LaunchedEffect(Unit) {
+        meViewModel.fetchFaceEmbeddings()
+        meViewModel.loadFaceLabels()
     }
 
     var isLoading by remember { mutableStateOf(true) }
@@ -142,7 +162,8 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
     }
 
     var showConfirmEditDialog by remember { mutableStateOf(false) }
-    val isChanged = name != editedName || birthDate != editedBirthDate || gender != editedGender
+    val isChanged = name != editedName || birthDate != editedBirthDate || gender != editedGender ||
+            pendingAddedFaces.isNotEmpty() || pendingEditedFaces.isNotEmpty() || pendingDeletedFaces.isNotEmpty()
 
     LaunchedEffect(name, birthDate, gender) {
         editedName = name
@@ -283,13 +304,24 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ProfileTextField("First Name", editedName, isEditing) { editedName = it }
+                ProfileTextField("Nama", editedName, isEditing) { editedName = it }
                 ProfileTextField("Email", auth.currentUser?.email ?: "user@gmail.com", false) {}
 
-                ProfileDatePicker("Birth", editedBirthDate, isEditing) { editedBirthDate = it }
-                ProfileDropdownField("Gender", editedGender, isEditing) { editedGender = it }
+                ProfileDatePicker("Tanggal Lahir", editedBirthDate, isEditing) { editedBirthDate = it }
+                ProfileDropdownField("Jenis Kelamin", editedGender, isEditing) { editedGender = it }
 
                 Spacer(modifier = Modifier.height(5.dp))
+
+                RegisteredFacesSection(
+                    navController = navController,
+                    faceLabels = faceLabels,
+                    isEditing = isEditing,
+                    pendingAddedFaces = pendingAddedFaces,
+                    pendingDeletedFaces = pendingDeletedFaces,
+                    faceEmbeddings = meViewModel.faceEmbeddings.value,
+                    onAddFace = { label, embedding -> pendingAddedFaces[label] = embedding },
+                    onDeleteFace = { label -> pendingDeletedFaces.add(label) }
+                )
 
                 AnimatedVisibility(visible = !isEditing) {
                     Button(
@@ -299,28 +331,46 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                     ) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Edit Profile", color = Color.White)
+                        Text("Edit Profil", color = Color.White)
                     }
                 }
 
                 if (showConfirmEditDialog) {
                     AlertDialog(
                         onDismissRequest = { showConfirmEditDialog = false },
-                        title = { Text("Confirm Changes") },
-                        text = { Text("Are you sure you want to save these changes to your profile?") },
+                        title = { Text("Simpan Perubahan") },
+                        text = { Text("Apakah kamu yakin ingin menyimpan perubahan?") },
                         confirmButton = {
                             Button(onClick = {
                                 isEditing = false
+                                // Update profil
                                 meViewModel.updateProfile(editedName, editedBirthDate, editedGender)
+
+                                pendingAddedFaces.forEach { (label, embedding) ->
+                                    meViewModel.addFaceEmbedding(label, embedding)
+                                }
+                                pendingEditedFaces.forEach { (oldLabel, pair) ->
+                                    val (newLabel, embedding) = pair
+                                    meViewModel.editFaceEmbedding(oldLabel, newLabel, embedding)
+                                }
+                                pendingDeletedFaces.forEach { label ->
+                                    meViewModel.deleteFaceEmbedding(label)
+                                }
+
+                                pendingAddedFaces.clear()
+                                pendingEditedFaces.clear()
+                                pendingDeletedFaces.clear()
+
                                 Toast.makeText(context, "Profile Updated!", Toast.LENGTH_SHORT).show()
+
                                 showConfirmEditDialog = false
                             }) {
-                                Text("Yes")
+                                Text("Ya")
                             }
                         },
                         dismissButton = {
                             OutlinedButton(onClick = { showConfirmEditDialog = false }) {
-                                Text("Cancel")
+                                Text("Batal")
                             }
                         }
                     )
@@ -335,7 +385,7 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                         {
                             Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = Color.White)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Save Changes", color = Color.White)
+                            Text("Simpan Perubahan", color = Color.White)
                         }
                         Spacer(modifier = Modifier.height(10.dp))
 
@@ -350,31 +400,25 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                         ) {
                             Icon(imageVector = Icons.Default.Cancel, contentDescription = null, tint = Color.Black)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Cancel Changes", color = Color.Gray)
+                            Text("Batalkan Perubahan", color = Color.Gray)
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
-                    onClick = { /* Change password */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                    shape = RoundedCornerShape(30.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Change Password", color = Color.White)
-                }
+                ChangePasswordButton(
+                    email = FirebaseAuth.getInstance().currentUser?.email ?: "",
+                    navController = navController
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 if (showConfirmLogoutDialog) {
                     AlertDialog(
                         onDismissRequest = { showConfirmLogoutDialog = false },
-                        title = { Text("Confirm Logout") },
-                        text = { Text("Are you sure you want to log out?") },
+                        title = { Text("Konfirmasi Logout") },
+                        text = { Text("Apakah kamu yakin ingin logout?") },
                         confirmButton = {
                             Button(onClick = {
                                 coroutineScope.launch {
@@ -385,12 +429,12 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                                 }
                                 showConfirmLogoutDialog = false
                             }) {
-                                Text("Yes, Logout")
+                                Text("Ya, Logout")
                             }
                         },
                         dismissButton = {
                             OutlinedButton(onClick = { showConfirmLogoutDialog = false }) {
-                                Text("Cancel")
+                                Text("Batal")
                             }
                         }
                     )
@@ -410,6 +454,194 @@ fun MeScreen(navController: NavController?, meViewModel: MeViewModel = viewModel
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+}
+
+@Composable
+fun ChangePasswordButton(
+    email: String,
+    navController: NavController?
+) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Ganti Password") },
+            text = {
+                Text("Jika Anda melakukan reset password, akun akan logout dan Anda harus login ulang. Lanjutkan?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                Toast.makeText(context, "Email reset dikirim", Toast.LENGTH_LONG).show()
+                                coroutineScope.launch {
+                                    sessionManager.logout()
+                                    navController?.navigate("auth_screen") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Gagal: ${task.exception?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                }) {
+                    Text("Ya")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    Button(
+        onClick = { showDialog = true },
+        colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+        shape = RoundedCornerShape(30.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Color.White)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Ganti Password", color = Color.White)
+    }
+}
+
+@Composable
+fun RegisteredFacesSection(
+    navController: NavController?,
+    faceLabels: List<String>,
+    isEditing: Boolean,
+    pendingAddedFaces: MutableMap<String, Any>,
+    pendingDeletedFaces: MutableSet<String>,
+    faceEmbeddings: Map<String, Any>,
+    onAddFace: (String, Any) -> Unit,
+    onDeleteFace: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val uid = FirebaseAuth.getInstance().currentUser?.uid
+    val db = FirebaseFirestore.getInstance()
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var labelToDelete by remember { mutableStateOf<String?>(null) }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Text(
+            "Wajah Terdaftar",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        if (faceLabels.isEmpty()) {
+            Text(
+                "Belum ada wajah yang didaftarkan.",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        } else {
+            faceLabels.forEach { label ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Face,
+                        contentDescription = null,
+                        tint = Color(0xFF6C63FF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = label,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 16.sp
+                    )
+
+                    if (isEditing) {
+                        IconButton(onClick = {
+                            labelToDelete = label
+                            showDeleteDialog = true
+                        }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Hapus",
+                                tint = Color.Red
+                            )
+                        }
+                    }
+                }
+
+                Divider(color = Color.LightGray.copy(alpha = 0.4f))
+            }
+        }
+
+        if (isEditing) {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = { navController?.navigate("add_face_screen") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Tambah Wajah Baru")
+            }
+        }
+    }
+
+    // Dialog konfirmasi hapus
+    if (showDeleteDialog && labelToDelete != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteDialog = false
+                labelToDelete = null
+            },
+            title = { Text("Hapus Wajah?") },
+            text = { Text("Yakin ingin menghapus wajah \"$labelToDelete\"?") },
+            confirmButton = {
+                Button(onClick = {
+                    val label = labelToDelete
+                    if (uid != null && label != null) {
+                        db.collection("users").document(uid)
+                            .update("faceEmbeddings.$label", FieldValue.delete())
+                            .addOnSuccessListener {
+                                onDeleteFace(label)
+                                Toast.makeText(context, "Berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(context, "Gagal menghapus: ${it.message}", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                    showDeleteDialog = false
+                    labelToDelete = null
+                }) {
+                    Text("Hapus", color = Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showDeleteDialog = false
+                    labelToDelete = null
+                }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
@@ -457,7 +689,7 @@ fun ProfileDatePicker(label: String, selectedDate: String, isEditing: Boolean, o
 @Composable
 fun ProfileDropdownField(label: String, selectedValue: String, isEditing: Boolean, onValueSelected: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    val genderOptions = listOf("Male", "Female", "Rather Not Say")
+    val genderOptions = listOf("Laki - Laki", "Perempuan", "Tidak ingin sebut")
 
     val backgroundColor = if (isEditing) Color.White else Color(0xFFD3D3D3)
 
@@ -607,8 +839,3 @@ fun ProfileSelectableField(label: String, text: String, isEditing: Boolean, onVa
     Spacer(modifier = Modifier.height(10.dp))
 }
 
-@Preview(showBackground = true)
-@Composable
-fun MeScreenPreview() {
-    MeScreen(navController = null)
-}

@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.smarthome.CameraPreview
 import com.example.smarthome.model.FaceNetModel
-import com.example.smarthome.security.AESUtil
 import com.example.smarthome.session.SessionManager
 import com.example.smarthome.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
@@ -206,58 +205,93 @@ fun authenticateWithFace(
 ) {
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
-    Log.d("FaceAuth", "Memulai autentikasi wajah...")
-    Log.d("FaceAuth", "Embedding wajah hasil scan: ${faceEmbedding.joinToString()}")
 
-    db.collection("users").get()
-        .addOnSuccessListener { documents ->
-            var bestMatchEmail: String? = null
-            var bestMatchPassword: String? = null
-            var minDistance = Float.MAX_VALUE
+    val currentUser = auth.currentUser
+    val userId = currentUser?.uid
+    val currentEmail = currentUser?.email
 
-            for (document in documents) {
-                val storedEmbedding = (document.get("faceEmbedding") as? List<Double>)?.map { it.toFloat() }
-                val email = document.getString("email")
-                val encryptedPassword = document.getString("encryptedPassword")
+    if (userId == null || currentEmail == null) {
+        Log.e("FaceAuth", "User belum login atau userId/email null")
+        Toast.makeText(context, "User belum login, gunakan metode lain", Toast.LENGTH_SHORT).show()
+        onComplete()
+        return
+    }
 
-                if (storedEmbedding != null && email != null && encryptedPassword != null) {
-                    Log.d("FaceAuth", "Embedding wajah dari Firestore untuk $email: ${storedEmbedding.joinToString()}")
-                    val distance = calculateEuclideanDistance(faceEmbedding, storedEmbedding.toFloatArray())
-                    Log.d("FaceAuth", "Comparing face with user $email, distance: $distance")
-                    if (distance < minDistance) {
-                        minDistance = distance
-                        bestMatchEmail = email
-                        bestMatchPassword = encryptedPassword
+    Log.d("FaceAuth", "User terautentikasi sebagai $currentEmail ($userId)")
+
+    db.collection("users").document(userId).get()
+        .addOnSuccessListener { document ->
+            Log.d("FaceAuth", "Dokumen user diambil untuk $userId")
+            val data = document.data
+            Log.d("FaceAuth", "Data dokumen lengkap: $data")
+
+            val rawEmbeddings = data?.get("faceEmbeddings")
+            Log.d("FaceAuth", "Raw embeddings: $rawEmbeddings (${rawEmbeddings?.javaClass?.name})")
+
+            if (rawEmbeddings is Map<*, *>) {
+                val embeddingsMap = mutableMapOf<String, List<Double>>()
+
+                for ((label, vector) in rawEmbeddings) {
+                    Log.d("FaceAuth", "🔍 Label: $label, vector: $vector")
+                    if (label is String && vector is List<*>) {
+                        val floatList = vector.mapNotNull {
+                            when (it) {
+                                is Double -> it
+                                is Number -> it.toDouble()
+                                else -> null
+                            }
+                        }
+
+                        if (floatList.size == 512) {
+                            embeddingsMap[label] = floatList
+                            Log.d("FaceAuth", "Berhasil parsing embedding untuk label $label")
+                        } else {
+                            Log.w("FaceAuth", "⚠Panjang embedding untuk $label tidak valid: ${floatList.size}")
+                        }
                     }
                 }
-                onComplete()
-            }
 
-            if (bestMatchEmail != null && minDistance < 0.65) {
-                Log.d("FaceAuth", "Wajah cocok dengan pengguna $bestMatchEmail, distance: $minDistance")
-                try {
-                    val decryptedPassword = AESUtil.decrypt(bestMatchPassword!!)
-                    Log.d("FaceAuth", "Password berhasil didekripsi.")
-                    auth.signInWithEmailAndPassword(bestMatchEmail, decryptedPassword)
-                        .addOnSuccessListener {
-                            Log.d("FaceAuth", "Login berhasil untuk $bestMatchEmail")
-                            Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
+                Log.d("FaceAuth", "Total parsed embeddings: ${embeddingsMap.size}")
 
-                            coroutineScope.launch {
-                                sessionManager.saveSession(true, bestMatchEmail)
-                            }
+                // Lanjutkan proses perbandingan
+                var matched = false
+                var bestDistance = Float.MAX_VALUE
+                var bestLabel: String? = null
 
-                            navController?.navigate(Screen.Home.route)
-                        }
-                        .addOnFailureListener {
-                            Toast.makeText(context, "Login Gagal!", Toast.LENGTH_SHORT).show()
-                        }
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Error saat mendekripsi password!", Toast.LENGTH_SHORT).show()
+                for ((label, embeddingList) in embeddingsMap) {
+                    val storedEmbedding = embeddingList.map { it.toFloat() }.toFloatArray()
+                    val distance = calculateEuclideanDistance(faceEmbedding, storedEmbedding)
+
+                    Log.d("FaceAuth", "Membandingkan dengan '$label', distance: $distance")
+
+                    if (distance < 0.75 && distance < bestDistance) {
+                        matched = true
+                        bestDistance = distance
+                        bestLabel = label
+                    }
                 }
+
+                if (matched) {
+                    Log.d("FaceAuth", "Wajah cocok dengan label '$bestLabel', distance: $bestDistance")
+                    Toast.makeText(context, "Wajah dikenali, UI berhasil dibuka", Toast.LENGTH_SHORT).show()
+                    coroutineScope.launch {
+                        sessionManager.saveSession(true, currentEmail)
+                        Log.d("FaceAuth", "Session disimpan")
+                    }
+                    navController?.navigate(Screen.Home.route)
+                } else {
+                    Log.w("FaceAuth", "Tidak ada wajah yang cocok ditemukan")
+                    Toast.makeText(context, "Wajah tidak dikenali!", Toast.LENGTH_SHORT).show()
+                }
+
             } else {
-                Toast.makeText(context, "Wajah tidak dikenali!", Toast.LENGTH_SHORT).show()
+                Log.w("FaceAuth", "faceEmbeddings tidak bisa dikonversi jadi Map, tipe: ${rawEmbeddings?.javaClass?.name}")
+                Toast.makeText(context, "Data wajah tidak ditemukan.", Toast.LENGTH_SHORT).show()
             }
+        }
+        .addOnFailureListener {
+            Log.e("FaceAuth", "Gagal mengambil data Firestore: ${it.message}", it)
+            Toast.makeText(context, "Gagal memuat data wajah.", Toast.LENGTH_SHORT).show()
         }
         .addOnCompleteListener { onComplete() }
 }

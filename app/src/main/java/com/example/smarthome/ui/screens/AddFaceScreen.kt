@@ -1,6 +1,5 @@
 package com.example.smarthome.ui.screens
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.widget.Toast
@@ -40,15 +39,16 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.smarthome.CameraPreview
 import com.example.smarthome.model.FaceNetModel
-import com.example.smarthome.security.AESUtil
+import com.example.smarthome.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.face.Face
 
 @Composable
-fun FaceRegisterScreen(navController: NavController, name: String, email: String, password: String) {
+fun AddFaceScreen(navController: NavController) {
     val context = LocalContext.current
     val faceNetModel = remember { FaceNetModel(context) }
+    val currentUser = FirebaseAuth.getInstance().currentUser
 
     var faceDetected by remember { mutableStateOf(false) }
     var latestFaceBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -58,81 +58,47 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
     var isProcessing by remember { mutableStateOf(false) }
     var buttonText by remember { mutableStateOf("Scan Wajah") }
 
-    var showExitDialog by remember { mutableStateOf(false) }
-
-    // Tangani tombol back (baik dari sistem maupun gesture)
-    BackHandler {
-        showExitDialog = true
+    var showCancelDialog by remember { mutableStateOf(false) }
+    BackHandler(enabled = true) {
+        showCancelDialog = true
     }
 
     val minFaceSize = 250 * 250
     val maxFaceSize = 400 * 400
 
     val onFacesDetected: (List<Face>, Bitmap) -> Unit = { faces, bitmap ->
-        if (faces.isNotEmpty()) {
-            val largestFace = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-            if (largestFace != null) {
-                val faceArea = largestFace.boundingBox.width() * largestFace.boundingBox.height()
-                when {
-                    faceArea < minFaceSize -> {
-                        faceDetected = false
-                        latestFaceBitmap = null
-                        latestBoundingBox = null
-                        buttonText = "Wajah terlalu jauh"
-                    }
-                    faceArea > maxFaceSize -> {
-                        faceDetected = false
-                        latestFaceBitmap = null
-                        latestBoundingBox = null
-                        buttonText = "Wajah terlalu dekat"
-                    }
-                    else -> {
-                        faceDetected = true
-                        latestFaceBitmap = bitmap
-                        latestBoundingBox = largestFace.boundingBox
-                        buttonText = "Scan Wajah"
-                    }
+        val largestFace = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
+        if (largestFace != null) {
+            val faceArea = largestFace.boundingBox.width() * largestFace.boundingBox.height()
+            when {
+                faceArea < minFaceSize -> {
+                    faceDetected = false
+                    buttonText = "Wajah terlalu jauh"
+                }
+                faceArea > maxFaceSize -> {
+                    faceDetected = false
+                    buttonText = "Wajah terlalu dekat"
+                }
+                else -> {
+                    faceDetected = true
+                    latestFaceBitmap = bitmap
+                    latestBoundingBox = largestFace.boundingBox
+                    buttonText = "Scan Wajah"
                 }
             }
         } else {
             faceDetected = false
-            latestFaceBitmap = null
-            latestBoundingBox = null
             buttonText = "Tidak ada wajah terdeteksi"
         }
     }
 
-    if (showExitDialog) {
-        AlertDialog(
-            onDismissRequest = { showExitDialog = false },
-            title = { Text("Batalkan Registrasi Wajah?") },
-            text = { Text("Apakah Anda yakin ingin keluar? Data wajah yang belum disimpan akan hilang.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showExitDialog = false
-                    navController.popBackStack() // kembali ke halaman sebelumnya
-                }) {
-                    Text("Ya")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("Tidak")
-                }
-            }
-        )
-    }
-
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(horizontal = 20.dp),
+        modifier = Modifier.fillMaxSize().background(Color.White).padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Register", fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        Text("Scan wajah anda untuk akses login mudah", fontSize = 14.sp, color = Color.Gray)
+        Text("Tambah Wajah", fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("Scan wajah baru untuk akun Anda", fontSize = 14.sp, color = Color.Gray)
 
         Spacer(modifier = Modifier.height(30.dp))
 
@@ -169,10 +135,31 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
                     isProcessing = true
                     faceEmbedding = faceNetModel.getFaceEmbedding(latestFaceBitmap!!, latestBoundingBox!!)
 
-                    val encryptedPassword = AESUtil.encrypt(password)
+                    val uid = currentUser?.uid
+                    if (uid != null && faceEmbedding != null) {
+                        val embeddingList = faceEmbedding!!.toList()
+                        val db = FirebaseFirestore.getInstance()
+                        val userDocRef = db.collection("users").document(uid)
 
-                    registerUser(email, encryptedPassword, password, name, faceEmbedding!!, faceLabel, context, navController) {
-                        isProcessing = false
+                        // Tambahkan atau update field faceEmbeddings sebagai map
+                        userDocRef.get().addOnSuccessListener { document ->
+                            val currentMap = document.get("faceEmbeddings") as? Map<String, List<Float>> ?: emptyMap()
+
+                            val updatedMap = currentMap.toMutableMap()
+                            updatedMap[faceLabel] = embeddingList
+
+                            userDocRef.update("faceEmbeddings", updatedMap)
+                                .addOnSuccessListener {
+                                    Toast.makeText(context, "Wajah berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
+                                    navController.popBackStack()
+                                }
+                                .addOnFailureListener {
+                                    Toast.makeText(context, "Gagal menambahkan wajah: ${it.message}", Toast.LENGTH_SHORT).show()
+                                }
+                                .addOnCompleteListener {
+                                    isProcessing = false
+                                }
+                        }
                     }
                 }
             },
@@ -185,11 +172,10 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
         ) {
             Text(if (isProcessing) "Menyimpan..." else buttonText, color = Color.White)
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Button(
-            onClick = { showExitDialog = true },
+            onClick = { showCancelDialog = true },
             modifier = Modifier
                 .fillMaxWidth(0.8f)
                 .height(50.dp),
@@ -198,51 +184,28 @@ fun FaceRegisterScreen(navController: NavController, name: String, email: String
         ) {
             Text("Batal", color = Color.Black)
         }
-    }
-}
 
-// Fungsi untuk mendaftarkan user ke Firebase Authentication dan menyimpan embedding wajah
-fun registerUser(
-    email: String,
-    encryptedPassword: String,
-    password: String,
-    name: String,
-    faceEmbedding: FloatArray,
-    faceLabel: String,
-    context: Context,
-    navController: NavController,
-    onComplete: () -> Unit
-) {
-    val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
-
-    auth.createUserWithEmailAndPassword(email, password)
-        .addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val userId = auth.currentUser?.uid ?: return@addOnCompleteListener
-
-                val userMap = hashMapOf(
-                    "name" to name,
-                    "email" to email,
-                    "encryptedPassword" to encryptedPassword,
-                    "faceEmbeddings" to mapOf(
-                        faceLabel to faceEmbedding.toList()
-                    )
-                )
-
-                db.collection("users").document(userId)
-                    .set(userMap)
-                    .addOnSuccessListener {
-                        Toast.makeText(context, "Registrasi berhasil!", Toast.LENGTH_SHORT).show()
-                        navController.navigate("auth_screen")
+        if (showCancelDialog) {
+            AlertDialog(
+                onDismissRequest = { showCancelDialog = false },
+                title = { Text("Batalkan Penambahan Wajah") },
+                text = { Text("Apakah kamu yakin ingin membatalkan proses penambahan wajah?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showCancelDialog = false
+                        navController.navigate(Screen.Me.route) {
+                            popUpTo("add_face_screen") { inclusive = true }
+                        }
+                    }) {
+                        Text("Ya")
                     }
-                    .addOnFailureListener { e ->
-                        Toast.makeText(context, "Gagal menyimpan data: ${e.message}", Toast.LENGTH_SHORT).show()
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCancelDialog = false }) {
+                        Text("Tidak")
                     }
-                    .addOnCompleteListener { onComplete() }
-            } else {
-                Toast.makeText(context, "Registrasi gagal: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                onComplete()
-            }
+                }
+            )
         }
+    }
 }

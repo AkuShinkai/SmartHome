@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,26 +31,48 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smarthome.session.SessionManager
+import kotlinx.coroutines.flow.first
 
 // Warna monokromatik
 val PrimaryColor = Color(0xFF2AABD5)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) } // State untuk show/hide password
+fun LoginBottomSheet(
+    onDismiss: () -> Unit,
+    onLogin: (String, String) -> Unit,
+    onSwitchAccount: () -> Unit
+) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+    var email by remember { mutableStateOf("") }
+    var isEmailEditable by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val storedEmail = sessionManager.userEmail.first()
+        if (!storedEmail.isNullOrEmpty()) {
+            email = storedEmail
+            isEmailEditable = false
+        }
+    }
+
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -60,17 +83,18 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Input Email
+            // Email Field
             OutlinedTextField(
                 value = email,
-                onValueChange = { newText ->
-                    if (!newText.contains("\n")) { // Mencegah input Enter
-                        email = newText
+                onValueChange = {
+                    if (isEmailEditable && !it.contains("\n")) {
+                        email = it
                     }
                 },
                 label = { Text("Email") },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Email Icon") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = isEmailEditable,
                 shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     containerColor = Color.White,
@@ -82,18 +106,18 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                     focusedLabelColor = Color.Black
                 ),
                 keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Next
                 )
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Input Password dengan Show/Hide
+            // Password Field
             OutlinedTextField(
                 value = password,
-                onValueChange = { newText ->
-                    if (!newText.contains("\n")) { // Mencegah input Enter
-                        password = newText
+                onValueChange = {
+                    if (!it.contains("\n")) {
+                        password = it
                     }
                 },
                 label = { Text("Password") },
@@ -124,6 +148,20 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
                 )
             )
 
+            // Tombol "Ganti Akun" hanya muncul jika email dikunci
+            if (!isEmailEditable) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = {
+                        email = ""
+                        isEmailEditable = true
+                        onSwitchAccount()
+                    }
+                ) {
+                    Text("Ganti Akun", color = Color.Red, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Tombol Login
@@ -140,17 +178,8 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onLogin: (String, String) -> Unit) {
 
             // Tombol Batal
             TextButton(onClick = onDismiss) {
-                Text("Batal", color = Color.Red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Batal", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewLoginBottomSheet() {
-    LoginBottomSheet(
-        onDismiss = {},
-        onLogin = { _, _ -> }
-    )
 }

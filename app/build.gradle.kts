@@ -98,7 +98,13 @@ dependencies {
 
     implementation(libs.coil)
 
-//    implementation (libs.tasks.vision)
+    implementation (libs.org.eclipse.paho.client.mqttv3)
+
+    implementation (libs.accompanist.flowlayout)
+
+    implementation (libs.androidx.localbroadcastmanager)
+
+    implementation (libs.firebase.messaging)
 
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")

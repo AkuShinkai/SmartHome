@@ -121,12 +121,12 @@ fun RegisterScreen(navController: NavController) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp)
+                    .clickable { showTermsDialog = true } // Klik seluruh row, termasuk checkbox
+                    .padding(8.dp)
             ) {
                 Checkbox(
                     checked = agreeTerms,
-                    onCheckedChange = null, // Nonaktifkan perubahan langsung dari pengguna
+                    onCheckedChange = { showTermsDialog = true }, // Klik checkbox juga buka dialog
                     colors = CheckboxDefaults.colors(
                         checkedColor = Color.Gray,
                         uncheckedColor = Color.Black,
@@ -139,7 +139,6 @@ fun RegisterScreen(navController: NavController) {
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,
-                    modifier = Modifier.clickable { showTermsDialog = true }
                 )
             }
             if (showTermsDialog) {
@@ -189,22 +188,16 @@ fun RegisterScreen(navController: NavController) {
                                 append("- Pastikan koneksi stabil untuk pengalaman optimal.\n\n")
 
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("5. Akses Lokasi\n")
+                                    append("5. Notifikasi\n")
                                 }
-                                append("- Aplikasi dapat meminta akses lokasi untuk meningkatkan keamanan atau menyesuaikan layanan.\n")
-                                append("- Informasi lokasi tidak akan dibagikan tanpa izin eksplisit.\n\n")
+                                append("- Aplikasi memerlukan izin notifikasi untuk fitur sensor kebakaran\n")
+                                append("- Pastikan bahwa izin notifikasi telah diizinkan agar mendapat pemberitahuan\n\n")
 
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                                     append("6. Tanggung Jawab Pengguna\n")
                                 }
                                 append("- Anda bertanggung jawab atas keamanan akun dan tidak boleh membagikan akses login.\n")
                                 append("- Penyalahgunaan aplikasi dapat mengakibatkan pembatasan atau penghentian layanan.\n\n")
-
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("7. Pembaruan Syarat dan Ketentuan\n")
-                                }
-                                append("- Kami dapat memperbarui syarat dan ketentuan sewaktu-waktu.\n")
-                                append("- Anda akan diberitahu jika ada perubahan signifikan.\n")
                             }
                             Text(
                                 text = termsText,

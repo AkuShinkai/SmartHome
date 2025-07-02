@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +48,9 @@ import com.example.smarthome.session.SessionManager
 import com.example.smarthome.ui.component.FaceLoginBottomSheet
 import com.example.smarthome.ui.component.LoginBottomSheet
 import com.example.smarthome.ui.navigation.Screen
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 val PrimaryColor = Color(0xFF2AABD5)
@@ -64,6 +67,15 @@ fun AuthScreen(navController: NavController?) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
+
+    var defaultEmail by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val isLoggedIn = sessionManager.isLoggedIn.first()
+        if (isLoggedIn) {
+            defaultEmail = sessionManager.userEmail.first()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().background(BackgroundColor)
@@ -147,33 +159,54 @@ fun AuthScreen(navController: NavController?) {
             }
         }
     }
-
     if (showLoginSheet) {
         LoginBottomSheet(
             onDismiss = { showLoginSheet = false },
             onLogin = { email, password ->
-                val validationError = validateLogin(email, password)
-                if (validationError != null) {
-                    loginError = validationError
-                    return@LoginBottomSheet
-                }
-
-                FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
-                    .addOnSuccessListener {
-                        scope.launch {
-                            sessionManager.saveSession(true, email)
+                val firebaseUser = FirebaseAuth.getInstance().currentUser
+                if (firebaseUser != null) {
+                    // 🔐 Reauthenticate jika user masih login di Firebase
+                    val credential = EmailAuthProvider.getCredential(email, password)
+                    firebaseUser.reauthenticate(credential)
+                        .addOnSuccessListener {
+                            scope.launch {
+                                sessionManager.saveSession(true, email)
+                            }
+                            Toast.makeText(context, "Verifikasi berhasil!", Toast.LENGTH_SHORT).show()
+                            navController?.navigate(Screen.Home.route) {
+                                popUpTo(0)
+                            }
+                            showLoginSheet = false
                         }
-                        Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
-                        showNotification(context, "Smart Home", "Selamat datang di aplikasi!")
-                        navController?.navigate(Screen.Home.route)
-                        showLoginSheet = false
-                    }
-                    .addOnFailureListener {
-                        loginError = it.localizedMessage
-                    }
+                        .addOnFailureListener {
+                            loginError = it.localizedMessage
+                        }
+                } else {
+                    // 🔄 Fallback ke login ulang kalau user null (sesi Firebase benar-benar habis)
+                    FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                        .addOnSuccessListener {
+                            scope.launch {
+                                sessionManager.saveSession(true, email)
+                            }
+                            Toast.makeText(context, "Login berhasil!", Toast.LENGTH_SHORT).show()
+                            navController?.navigate(Screen.Home.route) {
+                                popUpTo(0)
+                            }
+                            showLoginSheet = false
+                        }
+                        .addOnFailureListener {
+                            loginError = it.localizedMessage
+                        }
+                }
+            },
+            onSwitchAccount = {
+                scope.launch {
+                    sessionManager.logout()
+                }
             }
         )
     }
+
 
     if (showFaceLoginSheet) {
         FaceLoginBottomSheet(

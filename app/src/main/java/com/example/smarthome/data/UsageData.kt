@@ -1,48 +1,69 @@
 package com.example.smarthome.data
 
 import android.util.Log
+import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.tasks.await
 
 data class UsageData(
-    val timestamp: Timestamp,
-    val power: Double,
-    val energy: Double,
-    val current: Double,
-    val voltage: Double
+    val device: String = "", // NEW: Tambahkan nama device
+    val power: Float = 0f,
+    val energy: Float = 0f,
+    val current: Float = 0f,
+    val timestamp: Timestamp = Timestamp.now()
 )
 
-suspend fun fetchUsageData(switchId: String): List<UsageData> {
-    val db = FirebaseFirestore.getInstance()
-    val usageDataList = mutableListOf<UsageData>()
+suspend fun fetchAllUsageData(): List<UsageData> {
+    val firestore = Firebase.firestore
+    val deviceList = listOf("smart_lamp", "socket_2_lubang", "smart_door")
 
-    try {
-        val querySnapshot = db.collection("usage")
-            .document("saklar")
-            .collection(switchId)
-            .orderBy("timestamp") // Urutkan berdasarkan waktu
-            .get()
-            .await()
+    val allData = mutableListOf<UsageData>()
 
-        Log.d("Firestore", "Data ditemukan: ${querySnapshot.documents.size}")
+    for (device in deviceList) {
+        try {
+            val snapshot = firestore
+                .collection("history")
+                .document(device)
+                .collection("sensors")
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .get()
+                .await()
 
-        for (document in querySnapshot.documents) {
-            val timestamp = document.getTimestamp("timestamp") ?: Timestamp.now()
-            val power = document.getDouble("power") ?: 0.0
-            val energy = document.getDouble("energy") ?: 0.0
-            val current = document.getDouble("current") ?: 0.0
-            val voltage = document.getDouble("voltage") ?: 0.0
+            if (snapshot.isEmpty) {
+                Log.d("UsageScreen", "No data for $device")
+                continue
+            }
 
-            usageDataList.add(UsageData(timestamp, power, energy, current, voltage))
+            val deviceData = snapshot.documents.mapNotNull { doc ->
+                val after = doc.get("after") as? Map<*, *> ?: return@mapNotNull null
+                val before = doc.get("before") as? Map<*, *> ?: return@mapNotNull null
+
+                val afterEnergy = (after["energy"] as? Number)?.toFloat() ?: return@mapNotNull null
+                val beforeEnergy = (before["energy"] as? Number)?.toFloat() ?: return@mapNotNull null
+                val deltaEnergy = (afterEnergy - beforeEnergy).coerceAtLeast(0f)
+
+                val power = (after["power"] as? Number)?.toFloat() ?: 0f
+                val current = (after["current"] as? Number)?.toFloat() ?: 0f
+                val timestamp = doc.getTimestamp("timestamp") ?: return@mapNotNull null
+
+                UsageData(device, power, deltaEnergy, current, timestamp)
+            }
+
+            Log.d("UsageScreen", "Fetched ${deviceData.size} entries for $device")
+            allData.addAll(deviceData)
+
+        } catch (e: Exception) {
+            Log.e("UsageScreen", "Gagal fetch data untuk $device", e)
         }
-
-        if (usageDataList.isEmpty()) {
-            Log.w("Firestore", "Tidak ada data yang ditemukan")
-        }
-    } catch (e: Exception) {
-        Log.e("Firestore", "Error fetching data", e)
     }
 
-    return usageDataList
+    return allData
+}
+
+fun calculateTotalEnergy(data: List<UsageData>): Double {
+    val total = data.sumOf { it.energy.toDouble() }
+    Log.d("UsageScreen", "Total energy (Wh): $total")
+    return total
 }
