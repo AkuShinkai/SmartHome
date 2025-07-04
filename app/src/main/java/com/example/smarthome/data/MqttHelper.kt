@@ -8,9 +8,9 @@ import org.eclipse.paho.client.mqttv3.MqttMessage
 
 object MqttManager {
     private const val TAG = "MQTT-Manager"
-    private const val brokerUri = "ssl://fcea052744354405b694acff9b476116.s1.eu.hivemq.cloud:8883"
-    private const val username = "AkuShinkai"
-    private val password = "@Fuckrise69".toCharArray()
+    private const val brokerUri = ""
+    private const val username = ""
+    private val password = "".toCharArray()
 
     private var client: MqttClient? = null
 
